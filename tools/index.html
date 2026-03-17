@@ -2,12 +2,20 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZHUHENGHAO的个人博客</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <meta name="generator" content="Hexo 7.3.0"></head>
 <body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
     <nav class="top-nav">
         <div class="nav-container">
             <div class="nav-logo">
@@ -29,6 +37,14 @@
 
     <main class="main-container">
         <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
             <article class="post-content">
     <h1 class="post-title">实用工具</h1>
     <div class="post-meta">
@@ -70,6 +86,12 @@
 </div>
     </div>
 </article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
         </div>
 
         <aside class="sidebar-right">
@@ -78,6 +100,7 @@
                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Zhu" alt="Avatar">
                 </div>
                 <h3 class="author-name">ZHUHENGHAO</h3>
+                
                 <div class="author-bio-container">
                     <p class="bio-line1">电子信息硕士在读</p>
                     <p class="bio-line2">兴趣方向: 嵌入式开发</p>
@@ -132,6 +155,68 @@
             <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
         </div>
     </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
 
     <script src="/js/main.js"></script>
 </body>

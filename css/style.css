@@ -8,8 +8,8 @@
     --border-color: #e3e8f7;
     --shadow-color: rgba(0, 0, 0, 0.08);
     --shadow-hover: rgba(0, 0, 0, 0.15);
-    /* 导航栏透明度加大：0.3 代表更透明 */
-    --nav-bg: rgba(255, 255, 255, 0.3);
+    /* 导航栏背景调得更通透 */
+    --nav-bg: rgba(255, 255, 255, 0.15);
 }
 
 body.dark-mode {
@@ -28,54 +28,19 @@ body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background-col
 a { color: var(--text-color); text-decoration: none; transition: color 0.3s; }
 a:hover { color: var(--primary-hover); }
 
-/* 顶部毛玻璃导航 */
+/* 顶部透明极简导航 */
 .top-nav {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    height: 60px;
-    background: var(--nav-bg);
-    backdrop-filter: blur(4px); /* 毛玻璃强度 */
-    z-index: 100;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    transition: all 0.3s;
+    position: fixed; top: 0; width: 100%; height: 60px; background: var(--nav-bg);
+    backdrop-filter: blur(2px); z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); transition: all 0.3s;
 }
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    height: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.nav-logo a {
-    font-weight: bold;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-/* 导航链接颜色更深 */
-.nav-menu a {
-    margin-right: 20px;
-    font-weight: 600;
-    color: #1a1a1a !important;
-}
-/* 暗黑模式导航链接白色 */
-body.dark-mode .nav-menu a {
-    color: #ffffff !important;
-}
-/* ✅ 修复 HOVER 效果 */
-.nav-menu a:hover {
-    color: var(--primary-hover) !important;
-}
-.icon-btn {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-}
+.nav-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; height: 100%; display: flex; justify-content: space-between; align-items: center; }
+.nav-logo a { font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+
+/* 导航链接颜色 */
+.nav-menu a { margin-right: 20px; font-weight: 600; color: #1a1a1a !important; }
+body.dark-mode .nav-menu a { color: #ffffff !important; }
+.nav-menu a:hover { color: var(--primary-hover) !important; }
+.icon-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; }
 
 /* 首页大图 */
 .hero-section {
@@ -95,45 +60,24 @@ body.dark-mode .nav-menu a {
 .sidebar-right { width: 25%; position: sticky; top: 80px; }
 
 /* 卡片通用样式 */
-.card { background-color: var(--card-bg); border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px var(--shadow-color); transition: all 0.3s; margin-bottom: 20px; }
+.card { background-color: var(--card-bg); border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px var(--shadow-color); transition: all 0.3s; margin-bottom: 20px; text-align: center; }
 .card:hover { box-shadow: 0 8px 20px var(--shadow-hover); }
 
-/* 个人介绍样式定制 */
-/* 个人介绍样式定制 */
-/* 核心：卡片全局居中 */
-.author-card {
-  text-align: center;
+/* 头像完美居中与3D提升动画 */
+.author-avatar img { 
+    width: 110px; height: 110px; border-radius: 50%; display: block; margin: 0 auto 10px; 
+    transition: all 0.3s ease-out; box-shadow: 0 4px 8px var(--shadow-color); 
 }
-/* 头像居中 */
-.author-avatar {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 10px;
-}
-.author-bio-container {
-  margin: 15px 0;
-  line-height: 1.8;
-  text-align: center; /* 简介文字居中 */
-}
-.bio-line1 {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-.bio-line2 {
-  font-size: 1rem;
-  color: #000000;
-  font-weight: bold;
-}
-body.dark-mode .bio-line2 {
-  color: #ffffff;
-}
-/* 作者名称居中 */
-.author-name {
-  text-align: center;
-  margin: 10px 0;
-}
+.author-avatar img:hover { transform: translateY(-8px) scale(1.1); box-shadow: 0 15px 30px var(--shadow-hover); }
 
-/* 社交图标颜色 */
+/* 作者名称与个人介绍居中 */
+.author-name { text-align: center; margin: 10px 0; }
+.author-bio-container { margin: 15px auto; line-height: 1.8; text-align: center; width: 100%; }
+.bio-line1 { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px; }
+.bio-line2 { font-size: 1.05rem; color: #000000 !important; font-weight: bold; }
+body.dark-mode .bio-line2 { color: #ffffff !important; }
+
+/* 社交图标与统计数据 */
 .author-social { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
 .social-icon { font-size: 1.5rem; transition: transform 0.2s; }
 .icon-github { color: #24292e; }
@@ -142,35 +86,25 @@ body.dark-mode .bio-line2 {
 .social-icon:hover { transform: scale(1.2); }
 body.dark-mode .icon-github { color: #ffffff; }
 
-/* 公告文字颜色 */
+.author-stats { display: flex; justify-content: space-around; margin: 20px 0; }
+.stat-count { font-size: 1.2rem; font-weight: bold; }
+.stat-name { font-size: 0.8rem; color: var(--text-muted); }
+
+/* 公告文字 */
+.widget-title { text-align: left; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; }
 .announcement-text { font-size: 0.95rem; color: #000000 !important; font-weight: 500; line-height: 1.6; text-align: left; }
 body.dark-mode .announcement-text { color: #e2e2e2 !important; }
 
-/* 其他样式保持之前的... (省略号部分请确保保留之前的项目卡片样式) */
+/* 快捷链接与文章列表 */
 .quick-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
 .quick-link-card { background: var(--card-bg); padding: 20px; text-align: center; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; transition: transform 0.3s; }
 .quick-link-card:hover { transform: translateY(-5px); color: var(--primary-color); }
 .quick-link-card i { font-size: 2rem; color: var(--primary-color); }
-.post-card { margin-bottom: 20px; }
+.post-card { margin-bottom: 20px; text-align: left; } 
 .post-title { font-size: 1.6rem; margin-bottom: 10px; }
 .post-meta { display: flex; gap: 15px; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px; }
 .post-excerpt { color: var(--text-color); line-height: 1.8; margin-bottom: 20px; }
 .tag-pill { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; margin-right: 10px; }
-.author-avatar img { 
-  width: 110px; 
-  height: 110px; 
-  border-radius: 50%; 
-  /* 动画过渡时间，越慢越丝滑 */
-  transition: transform 0.8s ease; 
-}
-/* 鼠标悬浮：360度Y轴翻滚 + 微微放大 */
-.author-avatar img:hover {
-  transform: rotateY(360deg) scale(1.05);
-}
-.author-stats { display: flex; justify-content: space-around; margin-bottom: 20px; }
-.stat-count { font-size: 1.2rem; font-weight: bold; }
-.stat-name { font-size: 0.8rem; color: var(--text-muted); }
-.widget-title { text-align: left; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; }
 .site-footer { text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 0.9rem; }
 
 /* 弹窗样式 */
@@ -179,3 +113,147 @@ body.dark-mode .announcement-text { color: #e2e2e2 !important; }
 .modal-content { background: var(--card-bg); color: var(--text-color); padding: 35px 30px; border-radius: 15px; width: 90%; max-width: 380px; text-align: center; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); transform: translateY(-20px) scale(0.95); transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
 .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
 .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; color: var(--text-muted); cursor: pointer; }
+
+/* ========================================================================= */
+/* ✅ 核心修正：项目卡片排版、文字靠左与彩色胶囊标签 */
+/* ========================================================================= */
+
+.project-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; text-align: left; }
+.project-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: var(--border-color); color: var(--text-color); font-size: 1.2rem; }
+.widget-title i { color: #ff7242; }
+
+/* 项目图标颜色 */
+.content-left .project-card:first-of-type .project-icon { background: #e6f7ff; color: #007bff; }
+.content-left .project-card:last-of-type .project-icon { background: #e6f3ff; color: #1e80ff; }
+
+/* ✅ 修正：描述文字靠左对齐，方便阅读 */
+.project-body p { 
+    margin-bottom: 20px; 
+    line-height: 1.7; 
+    font-size: 0.95rem; 
+    text-align: left !important; /* 强制靠左 */
+}
+
+/* ✅ 修正：将技术栈标签升级为居中显示的彩色胶囊 */
+.project-tags { 
+    display: flex; 
+    flex-wrap: wrap; 
+    justify-content: center; /* 标签居中 */
+    gap: 10px; 
+    margin-bottom: 25px; 
+}
+.project-tags span {
+    background-color: rgba(73, 177, 245, 0.1); /* 浅蓝色背景 */
+    color: var(--primary-color); /* 蓝色文字 */
+    padding: 5px 14px; /* 胶囊内边距 */
+    border-radius: 20px; /* 圆角变成胶囊状 */
+    font-size: 0.85rem;
+    font-weight: bold;
+    border: 1px solid rgba(73, 177, 245, 0.3); /* 轻微边框提升质感 */
+    transition: all 0.3s;
+}
+.project-tags span:hover {
+    background-color: var(--primary-color);
+    color: #ffffff;
+}
+
+/* 黑夜模式下的胶囊标签颜色适配 */
+body.dark-mode .project-tags span {
+    background-color: rgba(30, 128, 255, 0.15);
+    color: #66b1ff;
+    border-color: rgba(30, 128, 255, 0.3);
+}
+body.dark-mode .project-tags span:hover {
+    background-color: #1e80ff;
+    color: #ffffff;
+}
+
+/* 底部下载按钮保持不变 */
+.project-footer { display: flex; gap: 15px; }
+.btn-download, .btn-github { flex-grow: 1; text-align: center; padding: 12px; border-radius: 8px; font-weight: bold; transition: all 0.3s; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-download { background: var(--primary-color); color: #fff; }
+.btn-download:hover { background: var(--primary-hover); color: #fff; }
+.btn-github { background: #24292e; color: #fff; }
+.btn-github:hover { background: #000; color: #fff; }
+.btn-download i, .btn-github i { font-size: 1.1rem; color: rgba(255,255,255,0.85); transition: all 0.3s ease; }
+.btn-download:hover i, .btn-github:hover i { color: #ffffff; transform: scale(1.1); }
+body.dark-mode .btn-github { background: #333; }
+body.dark-mode .btn-github:hover { background: #555; }
+
+
+/* ========================================================================= */
+/* 返回按钮、点赞与评论区样式 */
+/* ========================================================================= */
+
+/* ========================================================================= */
+/* 返回按钮、点赞与评论区样式 */
+/* ========================================================================= */
+
+/* ✅ 深度美化：返回上一页按钮 */
+.page-controls { margin-bottom: 25px; }
+.btn-back { 
+    background: var(--card-bg); /* 使用卡片同款背景 */
+    border: 1px solid var(--border-color); 
+    color: var(--text-color); 
+    font-size: 0.95rem; 
+    padding: 8px 18px; /* 增加内边距撑起按钮 */
+    border-radius: 20px; /* 胶囊圆角 */
+    cursor: pointer; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px; 
+    font-weight: bold; 
+    box-shadow: 0 2px 8px var(--shadow-color); /* 增加微微的立体阴影 */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+/* 悬浮效果：变色、向左浮动、发光阴影 */
+.btn-back:hover { 
+    background: var(--primary-color); 
+    color: #ffffff; 
+    border-color: var(--primary-color);
+    transform: translateX(-6px); 
+    box-shadow: 0 6px 15px rgba(73, 177, 245, 0.3); 
+}
+/* 黑夜模式发光阴影适配 */
+body.dark-mode .btn-back:hover {
+    box-shadow: 0 6px 15px rgba(30, 128, 255, 0.4); 
+}
+/* 互动大卡片 */
+.interaction-section { margin-top: 40px; text-align: left; padding: 30px; }
+
+/* 点赞按钮 */
+.like-container { text-align: center; margin-bottom: 20px; }
+.btn-like { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-muted); font-size: 1.1rem; padding: 10px 30px; border-radius: 30px; cursor: pointer; font-weight: bold; transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); display: inline-flex; align-items: center; gap: 8px; }
+.btn-like:hover { border-color: #ff4757; color: #ff4757; transform: scale(1.05); }
+.btn-like.active { background: #ff4757; border-color: #ff4757; color: white; animation: heartBeat 0.5s; }
+
+@keyframes heartBeat { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+/* 评论区分割线与标题 */
+.comment-divider { border-top: 1px dashed var(--border-color); margin: 25px 0; }
+.comment-title { font-size: 1.2rem; margin-bottom: 20px; color: var(--text-color); display: flex; align-items: center; gap: 8px; }
+
+/* 评论输入区 */
+.comment-input-area { margin-bottom: 30px; }
+#comment-input { width: 100%; height: 100px; padding: 15px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-color); color: var(--text-color); font-family: inherit; font-size: 0.95rem; resize: vertical; transition: border-color 0.3s; }
+#comment-input:focus { outline: none; border-color: var(--primary-color); }
+.comment-action { text-align: right; margin-top: 10px; }
+.btn-submit-comment { background: var(--primary-color); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+.btn-submit-comment:hover { background: var(--primary-hover); }
+
+/* 评论列表 */
+.no-comments { text-align: center; color: var(--text-muted); font-size: 0.95rem; padding: 20px 0; font-style: italic; }
+.comment-item { display: flex; gap: 15px; margin-bottom: 20px; animation: fadeIn 0.5s; }
+.comment-avatar { width: 45px; height: 45px; border-radius: 50%; background: var(--bg-color); border: 1px solid var(--border-color); }
+.comment-content-box { flex-grow: 1; background: var(--bg-color); padding: 15px; border-radius: 10px; border: 1px solid var(--border-color); position: relative; }
+.comment-meta { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+.comment-author { font-weight: bold; color: var(--primary-color); }
+.comment-time { color: var(--text-muted); }
+.comment-text { font-size: 0.95rem; line-height: 1.6; color: var(--text-color); white-space: pre-wrap; }
+
+/* 黑夜模式适配 */
+body.dark-mode .btn-like { background: #2a2a2a; border-color: #444; color: #ccc; }
+body.dark-mode .btn-like.active { background: #ff4757; color: white; border-color: #ff4757; }
+body.dark-mode #comment-input { background: #2a2a2a; border-color: #444; }
+body.dark-mode .comment-content-box { background: #2a2a2a; border-color: #444; }
+body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
