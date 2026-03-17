@@ -46,19 +46,18 @@
             
 
             <article class="post-content">
-    <h1 class="post-title">第一篇博客：我的嵌入式开发之路起航</h1>
+    <h1 class="post-title">test</h1>
     <div class="post-meta">
-        <span>写于：2026-03-16</span>
+        <span>写于：2026-03-18</span>
     </div>
     <div class="post-body">
-        <p>大家好，我是 ZHUHENGHAO，目前是一名电子信息专业的在读硕士。</p>
-<p>搭建这个个人博客，主要是为了在备战实习和秋招的过程中，有一个沉淀技术、记录思考的自留地。比起碎片化的笔记，我更希望在这里系统地整理我的开发思路和踩坑记录。</p>
-<h3 id="未来博客的更新计划："><a href="#未来博客的更新计划：" class="headerlink" title="未来博客的更新计划："></a>未来博客的更新计划：</h3><ol>
-<li><strong>嵌入式开发与学习</strong>：记录基于MCU、RTOS、Linux应用、驱动及内核的学习过程和心得，并尝试梳理清楚。</li>
-<li><strong>工具脚本分享</strong>：分享我日常为了提高效率写的一些Python自动化脚本或平时觉得比较好的一些调试工具等等。</li>
-<li><strong>技术复盘与总结</strong>：对所做或所学项目的技术复盘和总结。</li>
-</ol>
-<p>怕什么真理无穷，进一寸有一寸的欢喜！<br>第一篇博客就写到这里，期待未来能在这里留下更多扎实的代码和文字！</p>
+        <p>这是一篇测试文章！</p>
+<h3 id="1-遇到什么问题？"><a href="#1-遇到什么问题？" class="headerlink" title="1. 遇到什么问题？"></a>1. 遇到什么问题？</h3><p>在编写网页自动化监测脚本的间隙，我尝试用 Python 的 <code>pyserial</code> 库接收硬件传来的高频数据，发现偶尔会出现丢包现象。</p>
+<h3 id="2-解决方案"><a href="#2-解决方案" class="headerlink" title="2. 解决方案"></a>2. 解决方案</h3><p>后来发现是波特率匹配和缓冲区读取策略的问题。调整了 <code>timeout</code> 参数后完美解决。</p>
+<pre><code class="python">import serial
+# 测试代码片段
+ser = serial.Serial(&#39;COM3&#39;, 115200, timeout=0.1)
+</code></pre>
 
     </div>
 </article>
