@@ -72,9 +72,25 @@ body.dark-mode .nav-menu a { color: #ffffff !important; }
 
 /* 作者名称与个人介绍居中 */
 .author-name { text-align: center; margin: 10px 0; }
-.author-bio-container { margin: 15px auto; line-height: 1.8; text-align: center; width: 100%; }
+.author-bio-container { 
+    margin: 15px auto; 
+    line-height: 1.8; 
+    text-align: center; 
+    width: 100%; 
+    /* 【新增】强制整个介绍模块内的文字不换行 */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
 .bio-line1 { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px; }
-.bio-line2 { font-size: 1.05rem; color: #000000 !important; font-weight: bold; }
+.bio-line2 { 
+    /* 【微调】字号从 1.05rem 缩小到 1rem，确保在 Edge 里也能完美挤在一行 */
+    font-size: 1rem; 
+    color: #000000 !important; 
+    font-weight: bold; 
+    /* 【新增】防止个别汉字被单独挤下去 */
+    word-break: keep-all; 
+}
 body.dark-mode .bio-line2 { color: #ffffff !important; }
 
 /* 社交图标与统计数据 */
