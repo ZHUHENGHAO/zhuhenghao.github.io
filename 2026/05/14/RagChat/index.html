@@ -46,19 +46,42 @@
             
 
             <article class="post-content">
-    <h1 class="post-title">第一篇博客：我的嵌入式开发之路起航</h1>
+    <h1 class="post-title">RagChat机器人项目</h1>
     <div class="post-meta">
-        <span>写于：2026-03-16</span>
+        <span>写于：2026-05-14</span>
     </div>
     <div class="post-body">
-        <p>大家好，我是 ZHUHENGHAO，目前是一名电子信息专业的在读硕士。</p>
-<p>搭建这个个人博客，主要是为了在备战实习和秋招的过程中，有一个沉淀技术、记录思考的自留地。比起碎片化的笔记，我更希望在这里系统地整理我的开发思路和踩坑记录。</p>
-<h3 id="未来博客的更新计划："><a href="#未来博客的更新计划：" class="headerlink" title="未来博客的更新计划："></a>未来博客的更新计划：</h3><ol>
-<li><strong>嵌入式开发与学习</strong>：记录基于MCU、RTOS、Linux应用、驱动及内核的学习过程和心得，并尝试梳理清楚。</li>
-<li><strong>工具脚本分享</strong>：分享我日常为了提高效率写的一些Python自动化脚本或平时觉得比较好的一些调试工具等等。</li>
-<li><strong>技术复盘与总结</strong>：对所做或所学项目的技术复盘和总结。</li>
-</ol>
-<p>怕什么真理无穷，进一寸有一寸的欢喜！<br>第一篇博客就写到这里，期待未来能在这里留下更多扎实的代码和文字！</p>
+        <h2 id="项目背景"><a href="#项目背景" class="headerlink" title="项目背景"></a>项目背景</h2><p>在飞速发展的时代，每个公司或多或少都沉淀出了自己公司体系的一些<strong>操作手册</strong>或是<strong>说明文档</strong>，这些文档的体现形式可能是<strong>企业级wiki</strong>、公司所属PC的本地文档，然而当这些文档的体系过于庞大，如何去找到想要的某个知识点就十分繁琐，传统的方法可能就只能去进行文档标题的搜索，往往一个文档的标题无法涵盖其文档内容的所有知识点，且需要进行此知识点进行搜索的同事本身对其的概念就比较模糊，想要得到想要的答案会非常麻烦，很影响整个开发和对接的效率。恰逢AI盛行的时代，我们可以利用好LLM与用户实时对话的特点，开发一个对话机器人。这个对话机器人的核心是一个包含知识库的大模型，于是有了RagChat这个项目。它的存在对于<strong>通过wiki或内部文档查找知识点繁琐、麻烦、不准确的问题</strong>就十分必要了，简单来说，我们可以基于现有的wiki或是文档通过RAG进行切片、向量化等，完成知识库的搭建，再接入大模型，在同事使用大模型提问时，会优先从这个知识库里去检索并回答，从而<strong>更快、更准</strong>的回答同事的问题。</p>
+<h2 id="项目简介"><a href="#项目简介" class="headerlink" title="项目简介"></a>项目简介</h2><p>这是一个面向知识检索与对话场景的 RagChat 机器人项目，目标是把知识库检索与大模型对话结合起来，形成可落地的问答，同事无需再去wiki一个一个文档的搜索查找答案，而是通过与RagChat对话得到答案和相应wiki对应的目录。本文先搭一个可更新的框架，后续补充实现细节与效果评测。</p>
+<h2 id="核心目标"><a href="#核心目标" class="headerlink" title="核心目标"></a>核心目标</h2><ul>
+<li>抓取指定wiki及其子目录下的所有信息并完成文档转换、合并、格式纠错</li>
+<li>将转换好的文档快速接入本地&#x2F;云端知识库，提升回答准确度</li>
+<li>支持多轮对话与上下文追踪</li>
+</ul>
+<h2 id="系统结构"><a href="#系统结构" class="headerlink" title="系统结构"></a>系统结构</h2><p><strong>1：知识库构建与更新流程（文档入库）</strong></p>
+<ul>
+<li>从企业 Wiki（Confluence）拉取指定目录内容，通过接口获取页面 HTML</li>
+<li>本地完成格式清洗与转换（如 md&#x2F;PDF &#x2F; JSON），进入批量入库流程</li>
+<li>调用 RAGFlow 的数据集查询接口，获取目标数据集 <code>ds_abc</code></li>
+<li>上传文档到数据集，并触发解析任务</li>
+<li>RAGFlow 进行 OCR &#x2F; 切片 &#x2F; 向量化，写入磁盘与向量库</li>
+<li>轮询解析状态，直到文档切片完成并可检索</li>
+</ul>
+<p><img src="/../images/Ragchat%E7%A4%BA%E6%84%8F%E5%9B%BE1.png" alt="Ragchat示意图1"></p>
+<p><strong>2：问答检索与生成流程（在线对话）</strong></p>
+<ul>
+<li>同事提出问题，RagChat 机器人接收请求</li>
+<li>RagChat 调用 RAGFlow 检索接口，将问题向量化并搜索数据集</li>
+<li>返回 top-5 相关文档片段（chunks）作为上下文</li>
+<li>RagChat 组装 prompt &#x3D; 问题 + chunks发送给 LLM</li>
+<li>LLM 生成回答，RagChat 返回答案并附带引用来源</li>
+</ul>
+<p><img src="/../images/Ragchat%E7%A4%BA%E6%84%8F%E5%9B%BE2.png" alt="Ragchat示意图2"></p>
+<h2 id="本人负责部分"><a href="#本人负责部分" class="headerlink" title="本人负责部分"></a>本人负责部分</h2><ul>
+<li><input checked="" disabled="" type="checkbox"> 完成数据样例与索引方案说明</li>
+<li><input checked="" disabled="" type="checkbox"> 完成wiki的抓取、文档纠错整合、rag知识库的更新与上传</li>
+<li><input disabled="" type="checkbox"> 补充评测指标与效果对比</li>
+</ul>
 
     </div>
 </article>
