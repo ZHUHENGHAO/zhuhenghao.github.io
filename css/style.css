@@ -363,6 +363,10 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .content-left, .sidebar-right { width: 100%; }
   .sidebar-right { position: static; top: auto; }
 
+  /* 个人卡片所在侧边栏置顶 */
+  .sidebar-right { order: -1; }
+  .content-left { order: 1; }
+
   .quick-links { grid-template-columns: repeat(2, 1fr); }
 
   .hero-section { height: 45vh; }
@@ -381,7 +385,14 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .post-title { font-size: 1.5rem; }
   .post-meta { flex-wrap: wrap; gap: 8px; }
 
-  .quick-links { grid-template-columns: 1fr; }
+  /* 三个入口保持横排并缩小 */
+  .quick-links { 
+    grid-template-columns: repeat(3, minmax(0, 1fr)); 
+    gap: 8px; 
+  }
+  .quick-link-card { padding: 10px 6px; }
+  .quick-link-card i { font-size: 1.4rem; }
+  .quick-link-card span { font-size: 0.85rem; }
 
   .author-bio-container { white-space: normal; overflow: visible; text-overflow: unset; }
 }
