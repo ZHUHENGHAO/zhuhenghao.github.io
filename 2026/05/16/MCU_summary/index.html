@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">关于MCU的碎碎念</h1>
+    <div class="post-meta">
+        <span>写于：2026-05-16</span>
+    </div>
+    <div class="post-body">
+        <h2 id="第一章：MCU的基础概念理解"><a href="#第一章：MCU的基础概念理解" class="headerlink" title="第一章：MCU的基础概念理解"></a>第一章：MCU的基础概念理解</h2><p>首先需要理解，到底什么叫MCU，手机上的芯片算MCU吗？并不是，手机芯片属于SOC，下面介绍他们的基本概念：</p>
+<p><strong>MCU 也就是微控制器</strong>，片内集成小容量内置 Flash 与 RAM，常见的采用低功耗的 Cortex-M 类内核，主频低、算力有限，无需外接存储即可独立工作，主要用于硬件实时控制，运行裸机或 FreeRTOS 这类轻量化实时系统；</p>
+<p><strong>而 SoC 为片上系统</strong>，搭载 Cortex-A 等高性能多核架构，运算能力强，基本无大容量片内存储，必须外挂 DDR 内存与固态闪存，可运行 Linux、安卓等完整大型操作系统，集成网络、图像、多媒体等复杂外设，专门应对复杂运算、人机交互、AI、多媒体等高端智能场景。</p>
+<h3 id="MCU-的重要组成部分"><a href="#MCU-的重要组成部分" class="headerlink" title="MCU 的重要组成部分"></a>MCU 的重要组成部分</h3><p>MCU（微控制器）内部集成了<strong>Flash（非易失性程序存储器）</strong>和<strong>RAM（易失性随机存取存储器）</strong>两大核心存储单元，二者分工明确、协同工作，支撑程序从编写、编译、烧录到上电运行的全流程。</p>
+<p><strong>Flash属于掉电不丢失的静态存储，是程序的永久载体；我们编写的 C 语言代码，会经过编译器的预处理、编译、汇编、链接</strong>四大流程，将代码逻辑转换为 CPU 可执行的二进制机器码，同时按规则划分成不同段：<code>.isr_vector</code>中断向量表、<code>.text</code>代码段（存储所有函数、任务、运算、硬件操作的机器指令）、<code>.rodata</code>只读数据段（存储字符串、const 常量），以及<code>.data</code>段的初始值副本，最终打包成<code>.bin</code>&#x2F;<code>.hex</code>文件通过烧录工具写入 Flash。</p>
+<p><strong>RAM属于掉电丢失的运行时内存</strong>，仅在程序上电运行时使用，专门存储程序运行过程中的动态数据，内部按功能划分为四个区域：<code>.data</code>段（存放已初始化的全局 &#x2F; 静态变量，上电后从 Flash 拷贝初始值）、<code>.bss</code>段（存放未初始化的全局 &#x2F; 静态变量，上电自动清零）、堆区（Heap）（从低地址向高地址生长，用于动态内存分配、FreeRTOS 任务 &#x2F; 信号量 &#x2F; 队列的内存申请）、栈区（Stack）（从高地址向低地址生长，用于存储函数局部变量、函数调用现场、RTOS 任务独立栈）。</p>
+<p>MCU 上电后，会从 Flash 起始地址启动（若有 Bootloader 则优先执行引导程序），完成 RAM 的数据搬运与初始化后，跳转至 main 函数执行业务代码，CPU 持续从 Flash 的<code>.text</code>段读取指令，在 RAM 中操作变量数据，最终实现完整的程序运行。</p>
+<h3 id="1-Flash-的概念分区与存储内容"><a href="#1-Flash-的概念分区与存储内容" class="headerlink" title="1. Flash 的概念分区与存储内容"></a>1. Flash 的概念分区与存储内容</h3><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>分区名称</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>顶层（物理大分区）</td>
+<td>Bootloader 区</td>
+<td>出厂引导程序，用于跳转到APP区，起始地址0x8000000</td>
+</tr>
+<tr>
+<td>顶层（物理大分区）</td>
+<td><strong>APP 程序区</strong></td>
+<td>你写的整个程序都存在这</td>
+</tr>
+<tr>
+<td>↳ 子段（编译器细分）</td>
+<td>.isr_vector</td>
+<td>中断入口（APP 区最前面）</td>
+</tr>
+<tr>
+<td>↳ 子段（编译器细分）</td>
+<td>.text</td>
+<td>任务 &#x2F; 函数 &#x2F; 运算 &#x2F; 硬件操作对应的<strong>指令</strong></td>
+</tr>
+<tr>
+<td>↳ 子段（编译器细分）</td>
+<td>.rodata</td>
+<td>字符串、const 常量</td>
+</tr>
+<tr>
+<td>顶层（物理大分区）</td>
+<td>参数区</td>
+<td>存储配置，掉电不丢</td>
+</tr>
+</tbody></table>
+<h3 id="2-RAM-的内存分布"><a href="#2-RAM-的内存分布" class="headerlink" title="2. RAM 的内存分布"></a>2. RAM 的内存分布</h3><pre class="ram-layout">
+地址【低地址】0x2000 0000
+┌───────────────────────┐
+│ .data                 │ 全局/静态 已初始化变量
+├───────────────────────┤
+│ .bss                  │ 全局/静态 未初始化/零变量
+├───────────────────────┤
+│                       │
+│  Heap 堆  👇 向上增长  │ malloc、FreeRTOS内核/信号量/队列
+│                       │
+├───────────────────────┤
+│  空闲预留空间          │ 防堆栈溢出碰撞
+├───────────────────────┤
+│                       │
+│  Stack 栈 👆 向下增长  │ 局部变量、函数现场、RTOS任务独立栈
+│                       │
+└───────────────────────┘
+地址【高地址】0x2000 7FFF
+</pre>
+
+<h3 id="3-MCU-上电后启动流程"><a href="#3-MCU-上电后启动流程" class="headerlink" title="3. MCU 上电后启动流程"></a>3. MCU 上电后启动流程</h3><ul>
+<li>🔌 上电复位</li>
+<li>🛠️ 硬件取指：Flash 0x08000000 (Bootloader 起始地址)</li>
+<li>🤖 运行 Bootloader：时钟初始化 → 校验 APP 合法性 → 无升级则跳转 APP</li>
+<li>🚀 跳转到 APP 分区 (如:0x08010000)</li>
+<li>📦 执行 APP 复位汇编：初始化栈 → 搬运 <code>.data</code> → 清零 <code>.bss</code></li>
+<li>▶️ 进入 <code>main()</code> 函数：硬件初始化 → 创建 RTOS 任务&#x2F;信号量</li>
+<li>⚙️ 启动 RTOS 调度器 → 多任务(ADC&#x2F;保存)并发运行</li>
+</ul>
+<h3 id="4-C-语言编译流程"><a href="#4-C-语言编译流程" class="headerlink" title="4. C 语言编译流程"></a>4. C 语言编译流程</h3><ol>
+<li>预处理：展开头文件、宏定义，去掉注释（例：<code>#include &quot;stdio.h&quot;</code>）</li>
+<li>编译（C → 汇编）：把 C 代码翻译成汇编助记符</li>
+<li>汇编（汇编 → 机器码）：把汇编翻译成二进制机器码，生成 <code>.o</code> 目标文件</li>
+<li>链接（链接 <code>.o</code> 文件）：合并所有 <code>.o</code> 文件，分配 Flash&#x2F;RAM 地址，生成可烧录的 <code>.bin</code>&#x2F;<code>.hex</code> 文件</li>
+</ol>
+<h2 id="第二章：如何分析map文件"><a href="#第二章：如何分析map文件" class="headerlink" title="第二章：如何分析map文件"></a>第二章：如何分析map文件</h2><p>单片机开发中的 <code>.map</code> 文件（映射文件）是编译器和链接器（Linker）在编译完成后生成的一份“内存账本”。它详细记录了程序中所有的代码（函数）、变量、常量以及第三方库是如何被分配到单片机的物理内存（Flash 和 RAM）中的。</p>
+<p>当需要进行底层调试、优化内存占用，或者实现 A&amp;B 冗余程序设计等复杂的固件架构时，阅读和分析 <code>.map</code> 文件是一项必不可少的硬核技能。可以从下到上、由宏观到微观来拆解它的结构和分析方法：</p>
+<h4 id="第一步：看宏观总结（Image-component-sizes）"><a href="#第一步：看宏观总结（Image-component-sizes）" class="headerlink" title="第一步：看宏观总结（Image component sizes）"></a>第一步：看宏观总结（Image component sizes）</h4><p>分析 <code>.map</code> 文件，<strong>最先要看的是文件最末尾的总结部分</strong>。这决定了你的程序是否超出了芯片的容量。</p>
+<p>在你的文件中，末尾显示：</p>
+<pre class="map-output">
+Total RO  Size (Code + RO Data)                28836 (  28.16kB)
+Total RW  Size (RW Data + ZI Data)             22160 (  21.64kB)
+Total ROM Size (Code + RO Data + RW Data)      29012 (  28.33kB)
+</pre>
+
+<p>这几个英文缩写代表了内存消耗的核心指标：</p>
+<ul>
+<li><strong>Code (代码):</strong> 存放程序的机器指令（如你写的 C 语言逻辑、卡尔曼滤波算法等）。</li>
+<li><strong>RO Data (Read-Only Data):</strong> 只读常量（如 <code>const</code> 修饰的数组、字符串、程序中定义的绝对地址）。</li>
+<li><strong>RW Data (Read-Write Data):</strong> 已初始化且初值非 0 的全局变量和静态变量。</li>
+<li><strong>ZI Data (Zero-Initialized Data):</strong> 未初始化或初值为 0 的全局变量和静态变量。</li>
+</ul>
+<p><strong>如何计算实际占用？</strong></p>
+<ul>
+<li><strong>Flash 占用 (Total ROM Size) &#x3D; Code + RO Data + RW Data</strong>。因为 RW Data 的初始值需要掉电保存，所以必须存一份在 Flash 里。你的程序目前占用了 <strong>28.33kB</strong> 的 Flash。</li>
+<li><strong>RAM 占用 (Total RW Size) &#x3D; RW Data + ZI Data</strong>。单片机上电时，会将 RW Data 从 Flash 搬运到 RAM，并在 RAM 中为 ZI Data 分配清零的空间。你的程序目前占用了 <strong>21.64kB</strong> 的 RAM。</li>
+</ul>
+<h4 id="第二步：查内存大户（Object-Totals）"><a href="#第二步：查内存大户（Object-Totals）" class="headerlink" title="第二步：查内存大户（Object Totals）"></a>第二步：查内存大户（Object Totals）</h4><p>如果发现 RAM 或 Flash 占用过高，向上滚动到 <code>Image component sizes</code> 的明细表格。这里列出了每个 <code>.o</code> 文件（即每个 <code>.c</code> 源文件编译后的产物）的具体开销。</p>
+<p>以你的文件为例：</p>
+<ul>
+<li><strong>FreeRTOS 的堆内存消耗极大：</strong> <code>heap_4.o</code> 占用了 <strong>10240 Bytes (10kB)</strong> 的 ZI Data。这正是 FreeRTOS 配置文件中定义的 <code>configTOTAL_HEAP_SIZE</code>。</li>
+<li><strong>主函数与全局缓冲：</strong> <code>main.o</code> 占用了 5936 Bytes 的 ZI Data。</li>
+<li><strong>FatFS 文件系统与显示：</strong> <code>ff.o</code> (FatFS核心) 占用了近 5kB 代码；<code>oled.o</code> 占用了 2kB 的 RO Data（通常是字库）。</li>
+</ul>
+<p>通过这里，你可以精准定位是哪个模块吃掉了内存。如果在处理 ADC 采集信号并进行复杂滤波时发现 RAM 不够，就可以在这里查看各个缓冲数组到底占了多少空间。</p>
+<h4 id="第三步：看物理映射（Memory-Map-of-the-image）"><a href="#第三步：看物理映射（Memory-Map-of-the-image）" class="headerlink" title="第三步：看物理映射（Memory Map of the image）"></a>第三步：看物理映射（Memory Map of the image）</h4><p>这一节展示了代码和数据在单片机真实物理地址上的分布。</p>
+<ul>
+<li><strong>Load Region LR_1 (Base: 0x08000000…)：</strong> 这是程序在 Flash 中的加载区域，<code>0x08000000</code> 是 STM32 标准的 Flash 起始地址。如果是做 OTA 升级，Bootloader 和 App 的偏移地址就是通过核对这里的 Base 地址来确认是否修改成功的。</li>
+<li><strong>Execution Region ER_RW &#x2F; ER_ZI (Base: 0x20000000…)：</strong> 这是程序运行时的 SRAM 区域，<code>0x20000000</code> 是 STM32 的 RAM 起始地址。</li>
+</ul>
+<h4 id="第四步：微观定位（Image-Symbol-Table）"><a href="#第四步：微观定位（Image-Symbol-Table）" class="headerlink" title="第四步：微观定位（Image Symbol Table）"></a>第四步：微观定位（Image Symbol Table）</h4><p>当你遇到 HardFault（硬件死机）时，这个表格是救命稻草。它记录了每一个函数和全局变量的具体内存地址。</p>
+<ul>
+<li><strong>找变量：</strong> 比如你在 <code>main.c</code> 中定义了心电图或文件系统相关的缓冲。在这个表中可以搜索到：<ul>
+<li><code>save_buffer</code> 位于 <code>0x200005d0</code>，大小 <code>2048</code> 字节。</li>
+<li><code>wave_buffer2</code> 位于 <code>0x200003c8</code>，大小 <code>520</code> 字节。</li>
+</ul>
+</li>
+<li><strong>找函数定位死机：</strong> 如果单片机遇死机，通过调试器查看到 Program Counter (PC 指针) 停在 <code>0x08001bd8</code>。你可以拿着这个地址来查表，由于 <code>ShowECG_task</code> 的地址是 <code>0x08001bd1</code> 且大小为 <code>58</code> 字节，这就说明程序是在执行 <code>ShowECG_task</code> 任务时崩溃的，从而迅速缩小排查范围。</li>
+</ul>
+<h4 id="第五步：消除死代码（Removing-Unused-input-sections）"><a href="#第五步：消除死代码（Removing-Unused-input-sections）" class="headerlink" title="第五步：消除死代码（Removing Unused input sections）"></a>第五步：消除死代码（Removing Unused input sections）</h4><p>这部分列出了被编译器优化掉的无用函数和变量。比如文件中显示移除了大量 <code>stm32f10x_tim.o</code> 和 <code>stm32f10x_usart.o</code> 中的未调用库函数，总共节省了 33904 bytes。这说明编译器的优化等级（如 Keil 的 Optimization 选项或 <code>--gc-sections</code> 机制）正在正常工作。</p>
+<hr>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
