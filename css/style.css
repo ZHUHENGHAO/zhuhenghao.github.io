@@ -357,3 +357,31 @@ body.dark-mode .btn-like.active { background: #ff4757; color: white; border-colo
 body.dark-mode #comment-input { background: #2a2a2a; border-color: #444; }
 body.dark-mode .comment-content-box { background: #2a2a2a; border-color: #444; }
 body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
+
+@media (max-width: 900px) {
+  .main-container { flex-direction: column; }
+  .content-left, .sidebar-right { width: 100%; }
+  .sidebar-right { position: static; top: auto; }
+
+  .quick-links { grid-template-columns: repeat(2, 1fr); }
+
+  .hero-section { height: 45vh; }
+  .hero-title { font-size: 2.2rem; }
+  .hero-subtitle { font-size: 1rem; }
+}
+
+@media (max-width: 600px) {
+  .nav-container { padding: 0 12px; }
+  .nav-menu a { margin-right: 10px; font-size: 0.9rem; }
+  .hero-section { height: 38vh; }
+  .hero-title { font-size: 1.8rem; }
+  .hero-subtitle { font-size: 0.9rem; }
+
+  .post-content { padding: 24px 18px; }
+  .post-title { font-size: 1.5rem; }
+  .post-meta { flex-wrap: wrap; gap: 8px; }
+
+  .quick-links { grid-template-columns: 1fr; }
+
+  .author-bio-container { white-space: normal; overflow: visible; text-overflow: unset; }
+}
