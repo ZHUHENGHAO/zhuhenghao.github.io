@@ -6,6 +6,18 @@
     <title>ZHUHENGHAO的个人博客</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 <meta name="generator" content="Hexo 7.3.0"></head>
 <body>
     <script>
@@ -47,9 +59,12 @@
 
             <article class="post-content">
     <h1 class="post-title">RagChat机器人项目</h1>
+    
+    
     <div class="post-meta">
         <span>写于：2026-05-14</span>
     </div>
+    
     <div class="post-body">
         <h2 id="项目背景"><a href="#项目背景" class="headerlink" title="项目背景"></a>项目背景</h2><p>在飞速发展的时代，每个公司或多或少都沉淀出了自己公司体系的一些<strong>操作手册</strong>或是<strong>说明文档</strong>，这些文档的体现形式可能是<strong>企业级wiki</strong>、公司所属PC的本地文档，然而当这些文档的体系过于庞大，如何去找到想要的某个知识点就十分繁琐，传统的方法可能就只能去进行文档标题的搜索，往往一个文档的标题无法涵盖其文档内容的所有知识点，且需要进行此知识点进行搜索的同事本身对其的概念就比较模糊，想要得到想要的答案会非常麻烦，很影响整个开发和对接的效率。恰逢AI盛行的时代，我们可以利用好LLM与用户实时对话的特点，开发一个对话机器人。这个对话机器人的核心是一个包含知识库的大模型，于是有了RagChat这个项目。它的存在对于<strong>通过wiki或内部文档查找知识点繁琐、麻烦、不准确的问题</strong>就十分必要了，简单来说，我们可以基于现有的wiki或是文档通过RAG进行切片、向量化等，完成知识库的搭建，再接入大模型，在同事使用大模型提问时，会优先从这个知识库里去检索并回答，从而<strong>更快、更准</strong>的回答同事的问题。</p>
 <h2 id="项目简介"><a href="#项目简介" class="headerlink" title="项目简介"></a>项目简介</h2><p>这是一个面向知识检索与对话场景的 RagChat 机器人项目，目标是把知识库检索与大模型对话结合起来，形成可落地的问答，同事无需再去wiki一个一个文档的搜索查找答案，而是通过与RagChat对话得到答案和相应wiki对应的目录。本文先搭一个可更新的框架，后续补充实现细节与效果评测。</p>

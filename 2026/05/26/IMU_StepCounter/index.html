@@ -6,6 +6,18 @@
     <title>ZHUHENGHAO的个人博客</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 <meta name="generator" content="Hexo 7.3.0"></head>
 <body>
     <script>
@@ -47,9 +59,12 @@
 
             <article class="post-content">
     <h1 class="post-title">IMU的计步算法设计</h1>
+    
+    
     <div class="post-meta">
         <span>写于：2026-05-26</span>
     </div>
+    
     <div class="post-body">
         <p class="post-source-link" style="text-align: center;">
   <a href="https://github.com/ZHUHENGHAO/IMU_StepCounter.git" target="_blank" rel="noopener" aria-label="开源代码" style="display: inline-flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.15em;">
@@ -87,8 +102,8 @@
 </ul>
 <h3 id="1-3-评估指标定义"><a href="#1-3-评估指标定义" class="headerlink" title="1.3 评估指标定义"></a>1.3 评估指标定义</h3><p>以下为官方要求的关键指标：</p>
 <ol>
-<li>MAE（平均绝对误差）<br>$$<br>\mathrm{MAE} &#x3D; \frac{1}{N} \sum_{i&#x3D;1}^{N} |\mathrm{Pred}_i - \mathrm{True}_i|<br>$$</li>
-<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$<br>\mathrm{MAPE} &#x3D; \frac{1}{N_{walk+run}} \sum_{i&#x3D;1}^{N_{walk+run}} \frac{|\mathrm{Pred}_i - \mathrm{True}_i|}{\mathrm{True}_i} \times 100%<br>$$</li>
+<li>MAE（平均绝对误差）<br>$$<br>\mathrm{MAE} &#x3D; \frac{1}{N} \sum_{i&#x3D;1}^{N} \left|\mathrm{Pred}_i - \mathrm{True}_i\right|<br>$$</li>
+<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$<br>\mathrm{MAPE} &#x3D; \frac{1}{N_{\text{walk+run}}} \sum_{i&#x3D;1}^{N_{\text{walk+run}}} \frac{\left|\mathrm{Pred}_i - \mathrm{True}_i\right|}{\mathrm{True}_i} \times 100%<br>$$</li>
 <li>分类准确率：运动状态识别的准确率。</li>
 </ol>
 <h2 id="2-算法架构设计"><a href="#2-算法架构设计" class="headerlink" title="2. 算法架构设计"></a>2. 算法架构设计</h2><h3 id="2-1-整体流程"><a href="#2-1-整体流程" class="headerlink" title="2.1 整体流程"></a>2.1 整体流程</h3><p>本算法采用“先分类，后计步”的两阶段策略，将运动识别与步数统计两个任务划分。执行流程如下：</p>
@@ -136,7 +151,7 @@
 </ol>
 <h4 id="3-1-2-分类与平滑"><a href="#3-1-2-分类与平滑" class="headerlink" title="3.1.2 分类与平滑"></a>3.1.2 分类与平滑</h4><p>本文选择平衡随机森林：100 棵树、最大深度 10，并通过 min_samples_leaf&#x3D;5 防止过拟合。同时使用 HMM 时序平滑，基于 Viterbi 算法解码，利用高自转移概率约束输出，消除毫秒级频繁切换抖动。</p>
 <h3 id="3-2-阶段二：自适应峰值计步"><a href="#3-2-阶段二：自适应峰值计步" class="headerlink" title="3.2 阶段二：自适应峰值计步"></a>3.2 阶段二：自适应峰值计步</h3><h4 id="3-2-1-信号处理流程"><a href="#3-2-1-信号处理流程" class="headerlink" title="3.2.1 信号处理流程"></a>3.2.1 信号处理流程</h4><ol>
-<li>幅值合成：直接使用三轴原始加速度合成幅值，保留冲击信号尖锐特性。<br>$$<br>acc_mag &#x3D; \sqrt{a_x^2 + a_y^2 + a_z^2}<br>$$</li>
+<li>幅值合成：直接使用三轴原始加速度合成幅值，保留冲击信号尖锐特性。<br>$$<br>\mathrm{acc}_{\mathrm{mag}} &#x3D; \sqrt{a_x^2 + a_y^2 + a_z^2}<br>$$</li>
 <li>带通滤波：根据阶段一识别结果动态选择滤波参数。walk 模式（0.5<del>3.0 Hz）保留低频步态，run 模式（1.5</del>5.5 Hz）抑制低频晃动。</li>
 <li>峰值检测：采用 find_peaks 算法，基于信号标准差设置高度阈值，并设置最小峰间距。</li>
 <li>自相关引导：针对跑步时手臂摆动导致的“一步双峰”超计问题，引入自相关函数检测信号基频周期，以此动态调整最小峰间距。</li>

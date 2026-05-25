@@ -6,6 +6,18 @@
     <title>ZHUHENGHAO的个人博客</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 <meta name="generator" content="Hexo 7.3.0"></head>
 <body>
     <script>
@@ -47,9 +59,12 @@
 
             <article class="post-content">
     <h1 class="post-title">关于MCU的碎碎念</h1>
+    
+    
     <div class="post-meta">
         <span>写于：2026-05-16</span>
     </div>
+    
     <div class="post-body">
         <h2 id="第一章：MCU的基础概念理解"><a href="#第一章：MCU的基础概念理解" class="headerlink" title="第一章：MCU的基础概念理解"></a>第一章：MCU的基础概念理解</h2><p>首先需要理解，到底什么叫MCU，手机上的芯片算MCU吗？并不是，手机芯片属于SOC，下面介绍他们的基本概念：</p>
 <p><strong>MCU 也就是微控制器</strong>，片内集成小容量内置 Flash 与 RAM，常见的采用低功耗的 Cortex-M 类内核，主频低、算力有限，无需外接存储即可独立工作，主要用于硬件实时控制，运行裸机或 FreeRTOS 这类轻量化实时系统；</p>
