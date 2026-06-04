@@ -432,6 +432,18 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
             overflow: visible;
     }
 
+        /* 更强优先级，确保 MathJax / KaTeX 内部元素也缩小 */
+        .post-body mjx-container[display="true"],
+        .post-body .MathJax_Display,
+        .post-body .katex-display,
+        .post-body .mjx-chtml,
+        .post-body .mjx-chtml *,
+        .post-body .MathJax_Display *,
+        .post-body .katex * {
+        font-size: 0.78em !important;
+        line-height: 1.45 !important;
+        }
+
     .post-body mjx-container[display="true"] > svg,
     .post-body .MathJax_Display > svg,
     .post-body .katex-display > .katex {
