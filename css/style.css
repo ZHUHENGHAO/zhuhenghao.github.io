@@ -176,6 +176,9 @@ body.dark-mode .announcement-text { color: #e2e2e2 !important; }
     padding: 2px 6px;
     border-radius: 6px;
     font-size: 0.95em;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    white-space: normal;
 }
 .post-body pre {
     background: #111827;
@@ -421,8 +424,6 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
     .post-body .MathJax_Display,
     .post-body .katex-display {
             font-size: 0.92em;
-            transform: scale(0.98);
-            transform-origin: left top;
             white-space: normal;
             overflow: hidden;
     }

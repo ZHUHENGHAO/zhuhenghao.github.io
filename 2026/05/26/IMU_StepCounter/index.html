@@ -108,8 +108,8 @@
 </ul>
 <h3 id="1-3-评估指标定义"><a href="#1-3-评估指标定义" class="headerlink" title="1.3 评估指标定义"></a>1.3 评估指标定义</h3><p>以下为官方要求的关键指标：</p>
 <ol>
-<li>MAE（平均绝对误差）<br>$$<br>\mathrm{MAE} &#x3D; \frac{1}{N} \sum_{i&#x3D;1}^{N} \left|\mathrm{Pred}_i - \mathrm{True}_i\right|<br>$$</li>
-<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$<br>\mathrm{MAPE} &#x3D; \frac{1}{N_{\text{walk+run}}} \sum_{i&#x3D;1}^{N_{\text{walk+run}}} \frac{\left|\mathrm{Pred}_i - \mathrm{True}_i\right|}{\mathrm{True}_i} \times 100%<br>$$</li>
+<li>MAE（平均绝对误差）<br>$$<br>\begin{aligned}<br>\mathrm{MAE} &amp;&#x3D; \frac{1}{N} \sum_{i&#x3D;1}^{N} \<br>&amp;\quad \left|\mathrm{Pred}_i - \mathrm{True}_i\right|<br>\end{aligned}<br>$$</li>
+<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$<br>\begin{aligned}<br>\mathrm{MAPE} &amp;&#x3D; \frac{1}{N_{\text{walk+run}}} \sum_{i&#x3D;1}^{N_{\text{walk+run}}} \<br>&amp;\quad \frac{\left|\mathrm{Pred}_i - \mathrm{True}_i\right|}{\mathrm{True}_i} \times 100%<br>\end{aligned}<br>$$</li>
 <li>分类准确率：运动状态识别的准确率。</li>
 </ol>
 <h2 id="2-算法架构设计"><a href="#2-算法架构设计" class="headerlink" title="2. 算法架构设计"></a>2. 算法架构设计</h2><h3 id="2-1-整体流程"><a href="#2-1-整体流程" class="headerlink" title="2.1 整体流程"></a>2.1 整体流程</h3><p>本算法采用“先分类，后计步”的两阶段策略，将运动识别与步数统计两个任务划分。执行流程如下：</p>
