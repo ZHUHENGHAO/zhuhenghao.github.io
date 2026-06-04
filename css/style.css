@@ -24,6 +24,7 @@ body.dark-mode {
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; overflow-x: hidden; }
 body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s; }
 a { color: var(--text-color); text-decoration: none; transition: color 0.3s; }
 a:hover { color: var(--primary-hover); }
@@ -58,6 +59,7 @@ body.dark-mode .nav-menu a { color: #ffffff !important; }
 .main-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; gap: 20px; align-items: flex-start; }
 .content-left { width: 75%; }
 .sidebar-right { width: 25%; position: sticky; top: 80px; }
+.content-left, .sidebar-right, .post-content, .post-body { min-width: 0; }
 .main-container.no-sidebar { justify-content: center; }
 .main-container.no-sidebar .content-left { width: 100%; }
 
@@ -197,6 +199,21 @@ body.dark-mode .announcement-text { color: #e2e2e2 !important; }
 }
 .post-body th { background: rgba(73, 177, 245, 0.08); }
 .post-body hr { border: none; border-top: 1px dashed var(--border-color); margin: 22px 0; }
+.post-body mjx-container[display="true"],
+.post-body .MathJax_Display,
+.post-body .katex-display {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: normal;
+}
+.post-body mjx-container[display="true"],
+.post-body .MathJax_Display,
+.post-body .katex-display,
+.post-body mjx-container[display="true"] > svg,
+.post-body .MathJax_Display > svg,
+.post-body .katex-display > .katex {
+    max-width: 100%;
+}
 .post-excerpt { color: var(--text-color); line-height: 1.8; margin-bottom: 20px; }
 .tag-pill { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; margin-right: 10px; }
 .site-footer { text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 0.9rem; }
@@ -375,8 +392,12 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
 }
 
 @media (max-width: 600px) {
-  .nav-container { padding: 0 12px; }
-  .nav-menu a { margin-right: 10px; font-size: 0.9rem; }
+    .nav-container { padding: 0 10px; gap: 8px; }
+    .nav-logo a { font-size: 1rem; gap: 6px; }
+    .nav-menu { display: flex; align-items: center; gap: 8px; }
+    .nav-menu a { margin-right: 0; font-size: 0.8rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+    .nav-menu a i { font-size: 0.95rem; }
+    .icon-btn { font-size: 1.05rem; padding: 0; }
   .hero-section { height: 38vh; }
   .hero-title { font-size: 1.8rem; }
   .hero-subtitle { font-size: 0.9rem; }
@@ -394,20 +415,23 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .quick-link-card i { font-size: 1.4rem; }
   .quick-link-card span { font-size: 0.85rem; }
 
+    .post-content { padding: 22px 14px; }
+    .post-body { font-size: 0.98rem; }
     .post-body mjx-container[display="true"],
     .post-body .MathJax_Display,
     .post-body .katex-display {
-        max-width: 100%;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
+            font-size: 0.92em;
+            transform: scale(0.98);
+            transform-origin: left top;
+            white-space: normal;
+            overflow: hidden;
     }
 
     .post-body mjx-container[display="true"] > svg,
     .post-body .MathJax_Display > svg,
     .post-body .katex-display > .katex {
-        display: inline-block;
-        width: max-content;
+            max-width: 100%;
+            height: auto;
     }
 
   .author-bio-container { white-space: normal; overflow: visible; text-overflow: unset; }
