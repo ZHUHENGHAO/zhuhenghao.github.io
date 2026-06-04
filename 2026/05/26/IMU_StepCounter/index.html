@@ -84,12 +84,9 @@
 <ol>
 <li>引入自相关分析动态确定峰间距，解决跑步时可能因手臂摆动导致的“一步双峰”超计问题。</li>
 <li>采用基于能量包络的活跃区域过滤，有效抑制起止阶段的低能量伪峰干扰。</li>
-<ol>
-<li>MAE（平均绝对误差）<br>$$\mathrm{MAE} = \frac{1}{N} \sum_{i=1}^{N} \left|\mathrm{Pred}_i - \mathrm{True}_i\right|$$</li>
-<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$\begin{aligned}\mathrm{MAPE} &= \frac{1}{N_{\text{walk+run}}} \sum_{i=1}^{N_{\text{walk+run}}} \\
-&\quad \frac{\left|\mathrm{Pred}_i - \mathrm{True}_i\right|}{\mathrm{True}_i} \times 100\%\end{aligned}$$</li>
-<li>分类准确率：运动状态识别的准确率。</li>
 </ol>
+<p>在包含 80 个文件的测试中，算法实现了平均绝对误差（MAE）0.88 步，平均绝对百分比误差（MAPE）7.34%。通过上述优化，跑步模式的计数误差显著降低，三种状态下的计步均在可控范围之内。算法复杂度低，满足嵌入式实时处理要求，为资源受限的可穿戴设备提供了有效的步数统计解决方案。</p>
+<p><strong>关键词</strong>：计步算法、运动状态识别、自适应峰值检测、随机森林分类</p>
 <h2 id="1-项目背景与目标"><a href="#1-项目背景与目标" class="headerlink" title="1. 项目背景与目标"></a>1. 项目背景与目标</h2><h3 id="1-1-任务描述"><a href="#1-1-任务描述" class="headerlink" title="1.1 任务描述"></a>1.1 任务描述</h3><p>针对佩戴的 6 轴 IMU 设备，利用采集到的数据集，设计一套低功耗、高精度的计步算法。任务的核心目标是精准识别步行和跑步状态，剔除噪声干扰，实现步数的精准统计。</p>
 <p><img src="/../images/%7B689FC3BD-536B-4957-9DC3-2DA61603B25F%7D" alt="img"></p>
 <h3 id="1-2-数据集描述"><a href="#1-2-数据集描述" class="headerlink" title="1.2 数据集描述"></a>1.2 数据集描述</h3><ul>
@@ -112,7 +109,7 @@
 <h3 id="1-3-评估指标定义"><a href="#1-3-评估指标定义" class="headerlink" title="1.3 评估指标定义"></a>1.3 评估指标定义</h3><p>以下为官方要求的关键指标：</p>
 <ol>
 <li>MAE（平均绝对误差）<br>$$<br>\mathrm{MAE} &#x3D; \frac{1}{N} \sum_{i&#x3D;1}^{N} \left|\mathrm{Pred}_i - \mathrm{True}_i\right|<br>$$</li>
-<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$\begin{aligned}\mathrm{MAPE} &amp;&#x3D; \frac{1}{N_{\text{walk+run}}} \sum_{i&#x3D;1}^{N_{\text{walk+run}}} \<br>&amp;\quad \frac{\left|\mathrm{Pred}_i - \mathrm{True}_i\right|}{\mathrm{True}_i} \times 100%\end{aligned}$$</li>
+<li>MAPE（平均绝对百分比误差，仅对 walk+run 计算）<br>$$\mathrm{MAPE} &#x3D; \frac{1}{N_{\text{walk+run}}} \sum_{i&#x3D;1}^{N_{\text{walk+run}}} \frac{\left|\mathrm{Pred}_i - \mathrm{True}_i\right|}{\mathrm{True}_i} \times 100%$$</li>
 <li>分类准确率：运动状态识别的准确率。</li>
 </ol>
 <h2 id="2-算法架构设计"><a href="#2-算法架构设计" class="headerlink" title="2. 算法架构设计"></a>2. 算法架构设计</h2><h3 id="2-1-整体流程"><a href="#2-1-整体流程" class="headerlink" title="2.1 整体流程"></a>2.1 整体流程</h3><p>本算法采用“先分类，后计步”的两阶段策略，将运动识别与步数统计两个任务划分。执行流程如下：</p>
