@@ -392,6 +392,20 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .hero-section { height: 45vh; }
   .hero-title { font-size: 2.2rem; }
   .hero-subtitle { font-size: 1rem; }
+
+    /* 强制在较窄屏幕下缩小 MathJax/KaTeX 输出（覆盖 CHTML 与 SVG 两种模式） */
+    .post-body .mjx-chtml,
+    .post-body .mjx-chtml *,
+    .post-body .MathJax_Display,
+    .post-body .MathJax_Display *,
+    .post-body .MathJax_SVG,
+    .post-body svg[class*="mjx"],
+    .post-body svg[class*="MathJax"] {
+            font-size: 0.78em !important;
+            line-height: 1.45 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
 }
 
 @media (max-width: 600px) {
