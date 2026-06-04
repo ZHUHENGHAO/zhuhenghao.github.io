@@ -64,7 +64,7 @@
             
 
             <article class="post-content">
-    <h1 class="post-title">智能座舱 MCU（AURIX TC397x）底层开发与调试专业总结</h1>
+    <h1 class="post-title">Bosch智能座舱MCU的学习总结概述</h1>
     
     
     <div class="post-meta">
@@ -72,7 +72,7 @@
     </div>
     
     <div class="post-body">
-        <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>本文系统梳理了汽车电子领域高性能 MCU —— 英飞凌 AURIX TC397x 的底层开发与调试全链路工程实践，涵盖多核异构架构、自动化构建系统、硬件级调试机制、标准化诊断日志以及固件冗余设计等五大核心模块。</p>
+        <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>​		来到<strong>bosch智能座舱部门</strong>有一段时间了，稍微总结一下这段时间学习到的知识，主要是了解了车规级MCU的特性以及其flash的分区和调试的工具lauterbach、trace32熟悉、调试的逻辑的方法，以及为完成后续组内SARA项目，做了一些能够跨项目、跨芯片的统一调试环境构建，主要就是利用lauterbach官方提供的一些cmm脚本和API的灵活运用，完成cmd环境下，自动化的对芯片的识别、固件烧录、稳定性运行测试等。以下文章是我根据我自己平时总结的学习记录文档喂给AI生成的概述。<br>​		本文系统梳理了汽车电子领域高性能MCU —— 英飞凌 AURIX TC397x 的底层开发与调试全链路工程实践，涵盖多核异构架构、自动化构建系统、硬件级调试机制、标准化诊断日志以及固件冗余设计等五大核心模块。</p>
 <h2 id="1-汽车电子-MCU-多核异构架构与启动流程"><a href="#1-汽车电子-MCU-多核异构架构与启动流程" class="headerlink" title="1. 汽车电子 MCU 多核异构架构与启动流程"></a>1. 汽车电子 MCU 多核异构架构与启动流程</h2><p>AURIX TC397x 的启动流程涉及多核主控与硬件安全模块的严格协同与初始化配置。</p>
 <p><strong>标准启动链路</strong>：MCU 硬件复位后，系统首先读取 UCB（启动配置与 Boot Mode）以确定基础硬件参数。随后控制权交由 BM（Boot Manager）执行固件镜像的选择与校验，再流转至 BootLoader&#x2F;FBL 进行应用程序的刷写或直接跳转至 APP（AUTOSAR 业务逻辑）执行。</p>
 <p><strong>异构运行环境</strong>：</p>
@@ -150,7 +150,7 @@
 <p><strong>字典映射与解析机制</strong>：利用 Non verbose mode plugin，加载由系统构建生成的特定 <code>.xml</code> 配置文件。该机制将底层通信总线上传输的高效 Hash ID 动态映射并还原为高可读性的明文日志，大幅降低了车载通信总线的带宽占用率。</p>
 <h2 id="5-固件系统扩展与冗余设计原理"><a href="#5-固件系统扩展与冗余设计原理" class="headerlink" title="5. 固件系统扩展与冗余设计原理"></a>5. 固件系统扩展与冗余设计原理</h2><p>TC397x 的启动架构天然支持复杂的固件验证与高可靠性更新。在固件 OTA 升级中，通过合理划分 Flash 扇区并配置 BM 跳转逻辑，可以实现安全的版本迭代。</p>
 <p>这种机制在底层逻辑上，与实现 A&amp;B 冗余程序设计以提高系统稳定性高度一致：二者均是通过物理隔离的存储空间与状态机的严格校验逻辑，确保在主程序更新中断或数据校验损坏时，系统能够安全回滚至稳定版本，保障底层硬件设备的持续可用。</p>
-<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><p>本文为智能座舱 AURIX TC397x 系列笔记的第二篇，侧重底层开发与调试视角。基础概念与存储分区等内容可参阅本站另一篇 MCU 笔记。</p>
+<h2 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h2><p>本文为智能座舱 AURIX TC397x 系列笔记，侧重底层开发与调试视角。基础概念与存储分区等内容可参阅本站另一篇 MCU 笔记。</p>
 
     </div>
 </article>
