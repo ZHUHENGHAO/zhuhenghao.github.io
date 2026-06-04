@@ -394,5 +394,21 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .quick-link-card i { font-size: 1.4rem; }
   .quick-link-card span { font-size: 0.85rem; }
 
+    .post-body mjx-container[display="true"],
+    .post-body .MathJax_Display,
+    .post-body .katex-display {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .post-body mjx-container[display="true"] > svg,
+    .post-body .MathJax_Display > svg,
+    .post-body .katex-display > .katex {
+        display: inline-block;
+        width: max-content;
+    }
+
   .author-bio-container { white-space: normal; overflow: visible; text-overflow: unset; }
 }
