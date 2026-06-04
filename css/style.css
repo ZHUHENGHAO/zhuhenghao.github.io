@@ -423,13 +423,13 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
     .post-body mjx-container[display="true"],
     .post-body .MathJax_Display,
     .post-body .katex-display {
-          display: block;
-          width: 100%;
-          max-width: 100%;
-          font-size: 0.88em;
-          line-height: 1.55;
-          white-space: normal;
-          overflow: visible;
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            font-size: 0.78em; /* 手机端缩小公式字体 */
+            line-height: 1.45;
+            white-space: normal;
+            overflow: visible;
     }
 
     .post-body mjx-container[display="true"] > svg,
