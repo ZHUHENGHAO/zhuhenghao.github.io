@@ -63,162 +63,57 @@
                 </div>
             
 
-            <article class="post-content">
-    <h1 class="post-title">项目文章</h1>
+            <div class="quick-links">
+    <a href="/project-articles/" class="quick-link-card">
+        <i class="fas fa-book"></i>
+        <span>项目文章</span>
+    </a>
+    <a href="/project-source/" class="quick-link-card">
+        <i class="fas fa-code"></i>
+        <span>项目源码</span>
+    </a>
+    <a href="/tools/" class="quick-link-card">
+        <i class="fas fa-tools"></i>
+        <span>实用工具</span>
+    </a>
+</div>
+
+<div class="post-list">
     
+        <article class="card post-card">
+            <h2 class="post-title">
+                <a href="/2026/06/10/git-quickstart/">Git 快速上手教程</a>
+            </h2>
+            
+            <div class="post-meta">
+                <span><i class="far fa-user"></i> ZHUHENGHAO</span>
+                <span><i class="far fa-calendar-alt"></i> 2026-06-10</span>
+            </div>
+
+            <div class="post-excerpt">
+                1. 基本工作流程1工作区 → 暂存区 → 本地仓库 → 远程仓库
+
+2. 完整提交流程2.1 查看当前状态1git status
+
+
+查看哪些文件被修改、哪些是未跟踪的新文件。
+2.2 添加文件到暂存区添加所有变更（修改 + 新增）：
+1...
+            </div>
+            
+            <div class="post-footer">
+                <div class="post-tags">
+                    <span class="tag-pill" style="color: #49b1f5; background: rgba(73, 177, 245, 0.1);"># 学习笔记</span>
+                    <span class="tag-pill" style="color: #00c4b6; background: rgba(0, 196, 182, 0.1);"># 日常</span>
+                </div>
+            </div>
+        </article>
     
-    <div class="post-body">
-        <p class="page-intro">这里收录了我的详细项目笔记、技术复盘以及开发过程中的踩坑记录，点击下方卡片即可阅读完整文章。</p>
-
-<div class="project-grid">
-
-<div class="project-card">
-  <div class="project-header">
-    <div class="project-icon" style="background: #fff0f0; color: #e53935;"><i class="fas fa-car"></i></div>
-    <h3 class="project-title">智能座舱 MCU（AURIX TC397x）底层开发与调试</h3>
-  </div>
-  <div class="project-body">
-    <p>系统梳理了 AURIX TC397x 多核异构架构、自动化构建系统、硬件级调试机制、标准化诊断日志以及固件冗余设计的全链路工程实践。</p>
-  </div>
-  <div class="project-tags">
-    <span>MCU</span>
-    <span>英飞凌</span>
-    <span>AURIX</span>
-    <span>智能座舱</span>
-    <span>嵌入式</span>
-  </div>
-  <div class="project-footer">
-    <a href="/2026/05/28/Smart_Cockpit_MCU/" class="btn-download" style="background: #e53935;">
-      <i class="fas fa-book-reader"></i> 阅读文章内容
-    </a>
-  </div>
 </div>
 
-<div class="project-card">
-  <div class="project-header">
-    <div class="project-icon" style="background: #e8f7ff; color: #0ea5e9;"><i class="fas fa-shoe-prints"></i></div>
-    <h3 class="project-title">IMU 计步算法设计与测试报告</h3>
-  </div>
-  <div class="project-body">
-    <p>基于 6 轴 IMU 的低功耗计步方案，先分类后计步，结合随机森林与 HMM，并针对跑步双峰问题做了自相关优化。</p>
-  </div>
-  <div class="project-tags">
-    <span>IMU</span>
-    <span>计步算法</span>
-    <span>运动识别</span>
-  </div>
-  <div class="project-footer">
-    <a href="/2026/05/26/IMU_StepCounter/" class="btn-download" style="background: #0ea5e9;">
-      <i class="fas fa-book-reader"></i> 阅读文章内容
-    </a>
-  </div>
+<div class="pagination">
+    <span class="page-number current">1</span>
 </div>
-
-<div class="project-card">
-  <div class="project-header">
-    <div class="project-icon" style="background: #f3e8ff; color: #7c3aed;"><i class="fas fa-microchip"></i></div>
-    <h3 class="project-title">关于MCU的碎碎念</h3>
-  </div>
-  <div class="project-body">
-    <p>从 MCU 与 SoC 区别到存储分区、启动流程和 map 文件分析，整理一份可快速复盘的基础笔记。</p>
-  </div>
-  <div class="project-tags">
-    <span>MCU</span>
-    <span>嵌入式</span>
-    <span>学习笔记</span>
-  </div>
-  <div class="project-footer">
-    <a href="/2026/05/16/MCU_summary/" class="btn-download" style="background: #7c3aed;">
-      <i class="fas fa-book-reader"></i> 阅读文章内容
-    </a>
-  </div>
-</div>
-
-
-<div class="project-card">
-<div class="project-header">
-<div class="project-icon" style="background: #e6fffb; color: #20c997;"><i class="fas fa-robot"></i></div>
-<h3 class="project-title">RAGChat机器人项目</h3>
-</div>
-<div class="project-body">
-<p>围绕知识检索与对话融合的 RAGChat 项目，记录从数据接入、向量索引到对话编排与评测的完整落地过程。</p>
-</div>
-<div class="project-tags">
-<span>RAG</span>
-<span>AI</span>
-<span>Agent</span>
-</div>
-<div class="project-footer">
-<a href="/2026/05/14/RagChat/" class="btn-download" style="background: #20c997;">
-<i class="fas fa-book-reader"></i> 阅读文章内容
-</a>
-</div>
-</div>
-
-<div class="project-card">
-<div class="project-header">
-<div class="project-icon" style="background: #e6f7ff; color: #007bff;"><i class="fas fa-flag"></i></div>
-<h3 class="project-title">第一篇博客：起航之路</h3>
-</div>
-<div class="project-body">
-<p>这是本站的第一篇文章！在这里记录了我为什么选择搭建这个 Hexo 博客，未来我准备在这里分享的嵌入式开发的学习过程以及一些个人做的小项目，为硕士毕业前的实习和秋招打下基础。</p>
-</div>
-<div class="project-tags">
-<span>随笔</span>
-<span>博客搭建</span>
-<span>实习秋招</span>
-</div>
-<div class="project-footer">
-<a href="/2026/03/16/first-blog/" class="btn-download" style="background: #007bff;">
-<i class="fas fa-book-reader"></i> 阅读文章内容
-</a>
-</div>
-</div>
-
-<div class="project-card">
-  <div class="project-header">
-    <div class="project-icon" style="background: #fff7e6; color: #fa8c16;"><i class="fas fa-microchip"></i></div>
-    <h3 class="project-title">Python 串口高频数据丢包调试</h3>
-  </div>
-  <div class="project-body">
-    <p>在编写网页自动化监测脚本期间，通过 pyserial 接收硬件数据时遇到了丢包挑战。本文记录了如何通过调整波特率匹配和缓冲区读取策略（timeout 参数）完美解决该问题的过程。</p>
-  </div>
-  <div class="project-tags">
-    <span>Python</span>
-    <span>硬件调试</span>
-    <span>pyserial</span>
-  </div>
-  <div class="project-footer">
-    <a href="/2026/03/18/test/" class="btn-download" style="background: #fa8c16;">
-      <i class="fas fa-book-reader"></i> 阅读文章内容
-    </a>
-  </div>
-</div>
-
-
-<div class="project-card">
-  <div class="project-header">
-    <div class="project-icon" style="background: #f0fdf4; color: #f05032;"><i class="fab fa-git-alt"></i></div>
-    <h3 class="project-title">Git 快速上手教程</h3>
-  </div>
-  <div class="project-body">
-    <p>从基本工作流到分支操作、.gitignore 配置到日常快捷三连，系统梳理 Git 日常开发中的核心命令与最佳实践。</p>
-  </div>
-  <div class="project-tags">
-    <span>Git</span>
-    <span>教程</span>
-    <span>版本控制</span>
-  </div>
-  <div class="project-footer">
-    <a href="/2026/06/10/git-quickstart/" class="btn-download" style="background: #f05032;">
-      <i class="fas fa-book-reader"></i> 阅读文章内容
-    </a>
-  </div>
-</div>
-
-</div>
-    </div>
-</article>
 
             
                 <div class="card interaction-section" style="padding: 20px;">
