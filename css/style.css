@@ -413,6 +413,10 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
         word-break: break-all;
         font-size: 0.9rem;
     }
+    .post-body pre code {
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
 }
 
 @media (max-width: 600px) {
@@ -480,5 +484,9 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
     white-space: pre-wrap;
     word-break: break-all;
     font-size: 0.85rem;
+  }
+  .post-body pre code {
+    white-space: pre-wrap;
+    word-break: break-all;
   }
 }
