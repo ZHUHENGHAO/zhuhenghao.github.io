@@ -406,6 +406,13 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
             width: 100% !important;
             max-width: 100% !important;
         }
+
+    /* 平板端代码块换行 */
+    .post-body pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        font-size: 0.9rem;
+    }
 }
 
 @media (max-width: 600px) {
@@ -467,4 +474,11 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
     }
 
   .author-bio-container { white-space: normal; overflow: visible; text-overflow: unset; }
+
+  /* 手机端代码块自动换行，防止超出屏幕 */
+  .post-body pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.85rem;
+  }
 }
