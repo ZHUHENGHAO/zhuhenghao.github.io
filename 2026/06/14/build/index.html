@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            chtml: {
+                linebreaks: {
+                    automatic: true,
+                    width: 'container'
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">编译构建链路的详细理解</h1>
+    
+    
+    <div class="post-meta">
+        <span>写于：2026-06-14</span>
+    </div>
+    
+    <div class="post-body">
+        <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>以前对编译构建的底层链路不熟悉，只停留在了解gcc和makefile的层面上，自己最常使用的编译也是IDE里封装好的图形化编译按钮，一键编译、烧录。最近在公司的接触到这方面的任务，详细的理解了一下实际大型项目里的整套交叉编译工具链和原理，我觉得很有帮助，特此记录一下。真实的大型项目开发场景里，常常并不会有完整的一套IDE给你让你一键编译，而是用命令行去调用工具链编译，中间还需要写编译构建的规则文件，实现灵活配置。像是这个项目，我第一次编译就用了50分钟，这还是使用了ninja并行编译的情况下。</p>
+<p>大型项目里可能会涉及到很多的编译前配置，比如可能会需要根据项目的具体场景给内存划分好不同的flash分区(BM、BL、APP、UCB等)甚至ram分区，尤其是涉及到多核的芯片，每个核都会有单独的也有共享的内存空间，编译后的.o文件会声明这个对应的.c文件内容里分配到的不同的段(比如默认的代码段(.text)、(只读数据段).rodata、.data、.bss段还有自定义的段，比如.SW_VERSION_STRING，用来专门存储版本号变量的段)。在.c到.o的过程中，把每个c的各个内容分配到了不同的段里面，每个.o都有相同的默认的段，也有其特有特殊定义的段，但此时还没有把这些段映射到真实的物理地址上，那么ld文件就派上用场了，在这个文件里就是专门去灵活的配置各个段映射到的真实物理地址上去的，做完这一步以后才能真正的生成可执行文件，让你项目的代码的所有内容具体的分配到芯片真实的物理地址上去，芯片以它设计好的规则去运行，才能够完整的去执行你的程序。具体的梳理，将在文章下详细的解释。</p>
+<p><strong>编译构建链路</strong>是嵌入式开发中最核心的底层基础设施之一，理解其完整流程对于掌握固件从源码到可执行文件的每一步转化至关重要。本文以 <strong>AURIX TC397x</strong> 项目为实践载体，梳理了 CMake、CMakeLists.txt、Ninja 与 GHS 编译器&#x2F;链接器各组件的核心概念，再通过编译链路序列图深入分析了构建配置、并行编译、归档、链接四阶段的完整时序；随后解析了项目五层构建命令传参链路（Build.bat → Python → CMake → Ninja → GHS），最后深入分析了链接脚本（LD 文件）的 MEMORY 与 SECTIONS 两大核心块的结构与作用，以及编译产物 MAP 文件四个分区的内容含义与实际应用场景。掌握这些内容，是进行固件体积分析、内存越界排查、二进制数据提取等工程实践的基础。</p>
+<p><strong>关键词</strong>：编译链路、链接脚本、LD 文件、MAP 文件、嵌入式工具链</p>
+<h2 id="1-编译链路全景"><a href="#1-编译链路全景" class="headerlink" title="1. 编译链路全景"></a>1. 编译链路全景</h2><h3 id="1-1-核心工具链组件概念"><a href="#1-1-核心工具链组件概念" class="headerlink" title="1.1 核心工具链组件概念"></a>1.1 核心工具链组件概念</h3><p>在探讨编译流程之前，应该大致了解一下过程中涉及到的工具链和概念，先梳理本项目涉及的几个关键工具及其各自作用，理解它们在链路中的位置与职责。</p>
+<p><strong>CMake</strong>：一个跨平台的构建配置工具。传统 Makefile 需要手动逐条编写编译命令，而 CMake 采用声明式语法（<code>CMakeLists.txt</code>）描述”目标（Target）及其依赖关系”，再由 CMake 自动生成与平台对应的底层构建文件（比如 Makefile，但本项目为 <code>build.ninja</code>，用于ninja这个构建工具快速的解析并行调用编译器）。这种解耦使得项目可以同时支持多种工具链，只需要切换 CMake 工具链文件即可。</p>
+<p><strong>CMakeLists.txt</strong>：CMake 的主配置文件。以 <code>add_executable(hello main.c utils.c)</code> 为例，声明了”构建一个名为 hello 的可执行文件，它依赖 main.c 和 utils.c”这一目标，CMake 解析后自动推导出编译顺序与规则。项目中还通过 <code>-DBUILD_SW=APP</code> 等变量传递编译分区类型等关键参数。</p>
+<p><em><strong>.cmake（CMake 模块文件）</strong>：<code>.cmake</code> 文件是 CMake 的可复用模块文件，起到</em>*”include 公共片段”**的作用，有点像c语言里的头文件——将跨项目共享的路径变量、编译选项、工具链路径等抽离为独立文件，供多个 <code>CMakeLists.txt</code> 统一引用。在本项目中，<code>Aurix-toolchain.txt</code> 就是一个 <code>.cmake</code> 工具链文件，它通过 <code>CMAKE_TOOLCHAIN_FILE</code> 机制在 CMake 配置阶段优先加载，向 CMake 提供 GHS 编译器的路径（<code>/opt/ghs/comp_202248/</code>）、目标架构（TriCore TC397x）以及交叉编译必需的系统根目录等关键信息。CMake 在配置阶段读取工具链文件后，才会在后续解析 <code>CMakeLists.txt</code> 时正确调用 GHS 编译器而非默认的本地 GCC。</p>
+<p><strong>Ninja</strong>：一个专注于执行速度的构建系统，和make是一个层级的工具。但是相比 GNU Make 逐条解析 Makefile 的串行方式，Ninja 基于 CMake 生成的build.ninja(编译规则文件)，相当于手写的makefile文件，里面定义了”使用什么编译器？编译哪些文件？链接哪些文件？的具体规则”，进行高并发调度，所有无依赖关系的编译任务可同时并行执行，大幅缩短增量编译时间。</p>
+<p><strong>GHS 编译器（cctri&#x2F;cxtri）与链接器（elxr）</strong>：Green Hills Software 专为 TriCore&#x2F;AURIX 架构提供的商业级交叉编译工具链，和GCC编译器是一个层级的工具。编译器将 .c 源码编译为 .o 目标文件，链接器（elxr）负责将全部 .o 文件及静态库按链接脚本分配的地址整合为最终固件，并输出 .out（调试用 ELF 格式）、.map（地址映射表）和 .s19（烧录用格式）。</p>
+<h3 id="1-2-编译链路时序解析"><a href="#1-2-编译链路时序解析" class="headerlink" title="1.2 编译链路时序解析"></a>1.2 编译链路时序解析</h3><p>了解了各工具的作用后，本节按时间顺序梳理编译链路从配置到产出的完整过程。</p>
+<p><strong>第一步：构建配置（CMake 读取 CMakeLists.txt 生成 build.ninja）</strong></p>
+<p>开发者执行 <code>Build.bat</code> 后，Python 脚本解析参数并调用 CMake。CMake 加载项目根目录下的 <code>CMakeLists.txt</code>（主配置文件）以及通过 <code>-DCMAKE_TOOLCHAIN_FILE=Aurix-toolchain.txt</code> 指定的工具链文件。CMake 遍历源码目录结构，解析各 <code>CMakeLists.txt</code> 中声明的目标及其依赖关系，最终自动生成 <code>build.ninja</code>——一份包含”使用什么编译器、编译哪些文件、链接哪些文件”的完整构建规则文件。</p>
+<p><strong>第二步：并行编译（源文件 → 目标文件）</strong></p>
+<p>Ninja 读取 <code>build.ninja</code> 后，为每个 .c 源文件生成一条编译命令，由 GHS 编译器（<code>cctri</code>&#x2F;<code>cxtri</code>）并行执行：</p>
+<ul>
+<li>编译器对每个 .c 文件进行语法检查和语义分析，将错误和警告信息反馈回源文件供开发者修正。</li>
+<li>解析 <code>#include</code> 的所有头文件（.h），确认其中的函数声明、结构体定义与实际实现是否一致。</li>
+<li>编译完成后输出 .o 目标文件（ELF 目标格式），包含机器码和未解析的符号引用。</li>
+</ul>
+<p><strong>第三步：归档（目标文件 → 静态库）</strong></p>
+<p>对于需要封装为库的功能模块，GHS 归档工具（ar）将多个 .o 目标文件打包为 .a 静态库，便于其他模块统一引用，省去逐个 .o 管理的繁琐。</p>
+<p><strong>第四步：链接（静态库&#x2F;目标文件 → 可执行文件）</strong></p>
+<p>Ninja 最后执行一步链接命令：GHS 链接器（elxr）将所有 .o 目标文件和静态库（.a）合并，按 LD 链接脚本分配的地址整合为最终固件，输出 .out（ELF 调试映像）、.map（地址映射表）和 .s19（烧录用格式）。</p>
+<p><img src="/../images/%E7%BC%96%E8%AF%91%E9%93%BE%E8%B7%AF%E5%BA%8F%E5%88%97%E5%9B%BE2.png" alt="编译链路序列图"></p>
+<p>上图为标准 GCC 工具链的编译链路序列图，与本项目流程一致：编译器处理源文件并检查头文件依赖，归档工具打包目标文件为静态库，链接器最终合并输出可执行文件。</p>
+<h3 id="1-3-项目构建命令传参链路"><a href="#1-3-项目构建命令传参链路" class="headerlink" title="1.3 项目构建命令传参链路"></a>1.3 项目构建命令传参链路</h3><p>上述序列图描述的是标准 GCC 工具链的基础流程。本项目的实际构建在此基础上增加了两层调度——CMake 统一配置管理和 Ninja 并发执行，两者共同驱动 GHS 工具链完成嵌入式固件构建。完整命令传参链路如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Build.bat -o APP/BL/BM -p vcuplus -tc TC397x</span><br><span class="line">    ↓</span><br><span class="line">AutosarUtility.py（解析参数，生成分区配置）</span><br><span class="line">    ↓</span><br><span class="line">CMake（读取 Aurix-toolchain.txt，指定 GHS 编译器路径）</span><br><span class="line">    ↓</span><br><span class="line">build.ninja（自动生成，描述构建规则）</span><br><span class="line">    ↓</span><br><span class="line">Ninja（并发调度，先并行编译全部 .c → .o，再一步链接）</span><br><span class="line">    ↓</span><br><span class="line">GHS elxr（读取主 LD 文件，展开全部 #include 链接脚本链）</span><br><span class="line">    ↓</span><br><span class="line">.out / .map / .s19 / .srec</span><br></pre></td></tr></table></figure>
+
+<p>GHS 链接器（elxr）在链接阶段读入主 LD 文件后，会自动展开其中 <code>#include</code> 引用的全部子链接脚本（项目中共包含 24 个 LD 文件），将每个编译单元输出的段映射到 MEMORY 中声明的物理地址区间，最终输出四类产物：</p>
+<table>
+<thead>
+<tr>
+<th>产物格式</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>.out</code> &#x2F; <code>.elf</code></td>
+<td>含完整符号表与调试信息，用于 TRACE32 源码级调试</td>
+</tr>
+<tr>
+<td><code>.map</code></td>
+<td>地址映射表，记录每个段和符号的最终地址与大小</td>
+</tr>
+<tr>
+<td><code>.s19</code> &#x2F; <code>.srec</code></td>
+<td>纯二进制地址映射文件，用于 Flash 固件烧录</td>
+</tr>
+</tbody></table>
+<h2 id="2-LD-文件（链接脚本）理解"><a href="#2-LD-文件（链接脚本）理解" class="headerlink" title="2. LD 文件（链接脚本）理解"></a>2. LD 文件（链接脚本）理解</h2><h3 id="2-1-LD-文件的作用"><a href="#2-1-LD-文件的作用" class="headerlink" title="2.1 LD 文件的作用"></a>2.1 LD 文件的作用</h3><p>LD 文件（Linker Script，链接脚本）是编译前由开发者手写的配置文件，核心作用是<strong>定义固件中每个代码段和数据段在 Flash&#x2F;RAM 中的绝对物理地址</strong>。开发者需要根据芯片硬件手册中的内存映射表来编写 LD 文件，通过 <code>MEMORY &#123;&#125;</code> 块声明每个区域的起始地址和大小，再通过 <code>SECTIONS &#123;&#125;</code> 块将编译器生成的段（如 .text、.rodata、.bss）映射到对应的物理区域中。</p>
+<p><img src="/../images/image-20260614030032279.png" alt="项目ld文件结构图"></p>
+<p><strong>项目 LD 文件结构图</strong>展示了嵌入式软件开发从需求分析到联调的完整生命周期，以及 LD 文件在其中所处的构建环节位置。</p>
+<h3 id="2-2-MEMORY-块：地址空间声明表"><a href="#2-2-MEMORY-块：地址空间声明表" class="headerlink" title="2.2 MEMORY 块：地址空间声明表"></a>2.2 MEMORY 块：地址空间声明表</h3><p><code>MEMORY &#123;&#125;</code> 块是 LD 文件中的地址空间声明表，用于定义一个命名区域的起始地址与大小。实际项目中，MEMORY 声明主要分为三类：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>硬件约束</strong></td>
+<td>芯片手册强制规定的地址范围，开发者不可更改</td>
+<td>TC397 pflash 地址固定为 0x80000000（cached）&#x2F; 0xA0000000（non-cached）</td>
+</tr>
+<tr>
+<td><strong>架构划分</strong></td>
+<td>架构师基于系统需求对物理地址空间的人为逻辑分割</td>
+<td>将 pflash 划分为 BM 区、BL 区、APP 区等</td>
+</tr>
+<tr>
+<td><strong>保护区占型</strong></td>
+<td>声明但不映射代码，防止越界访问</td>
+<td>APP 区链接脚本的 MEMORY 中声明其他区地址范围，作用是边界保护</td>
+</tr>
+</tbody></table>
+<h3 id="2-3-SECTIONS-块：段映射规则表"><a href="#2-3-SECTIONS-块：段映射规则表" class="headerlink" title="2.3 SECTIONS 块：段映射规则表"></a>2.3 SECTIONS 块：段映射规则表</h3><p><code>SECTIONS &#123;&#125;</code> 块是 LD 文件中的段映射规则表，用于定义编译器产出的各类段分别放入 MEMORY 中哪个地址区域。主要分为三类：</p>
+<p><strong>1. 标准段映射</strong>：编译器默认生成的段（如 .text、.data、.bss、.rodata）按规则自动归入对应区域，无需显式声明，链接器会依据默认约定处理。</p>
+<p><strong>2. 自定义段映射</strong>：通过 <code>#pragma section</code> 创建的命名段需要显式声明接收区域。以版本号变量为例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">pragma</span> ghs section rodata = <span class="string">&quot;.SW_VERSION_STRING&quot;</span></span></span><br><span class="line"><span class="type">const</span> <span class="type">char</span> sw_version[] = <span class="string">&quot;V1.2.3&quot;</span>;</span><br><span class="line"><span class="meta">#<span class="keyword">pragma</span> ghs section rodata = default</span></span><br></pre></td></tr></table></figure>
+
+<p>代码中将版本号放入自命名段 <code>.SW_VERSION_STRING</code>，随后在 LD 文件的 SECTIONS 中将该段映射到 Flash 中的固定地址：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">.SW_VERSION_STRING : ALIGN(4)</span><br><span class="line">&#123;</span><br><span class="line">    _SW_VERSION_START = .;</span><br><span class="line">    *(.SW_VERSION_STRING)</span><br><span class="line">    _SW_VERSION_END = .;</span><br><span class="line">&#125; &gt; PFLASH_APP</span><br></pre></td></tr></table></figure>
+
+<p><strong>3. 符号导出</strong>：通过在 LD 文件中对符号赋值，可以将段边界地址以 C 语言符号形式暴露给源码引用。上例中的 <code>_SW_VERSION_START</code> 和 <code>_SW_VERSION_END</code> 即为导出的边界符号，固件代码可直接读取这两个变量的地址来获取版本号字符串的位置。</p>
+<h2 id="3-MAP-文件（链接映射表）的理解"><a href="#3-MAP-文件（链接映射表）的理解" class="headerlink" title="3. MAP 文件（链接映射表）的理解"></a>3. MAP 文件（链接映射表）的理解</h2><h3 id="3-1-MAP-文件的作用"><a href="#3-1-MAP-文件的作用" class="headerlink" title="3.1 MAP 文件的作用"></a>3.1 MAP 文件的作用</h3><p>MAP 文件是编译过程中由链接器自动生成的输出文件，完整记录了链接后每个段和每个符号在内存中的最终地址、占用大小以及所属的目标文件。MAP 文件使得<strong>不需要源代码也能反向查证固件中任意符号或变量的存放地址</strong>，是分析固件体积（RAM&#x2F;Flash 占用率）、排查内存越界或重叠问题、以及从 .s19&#x2F;.hex 二进制文件中提取版本号等关键数据的重要依据。</p>
+<h3 id="3-2-MAP-文件四大分区解析"><a href="#3-2-MAP-文件四大分区解析" class="headerlink" title="3.2 MAP 文件四大分区解析"></a>3.2 MAP 文件四大分区解析</h3><p>MAP 文件整体分为四个功能分区，各有不同的分析价值：</p>
+<table>
+<thead>
+<tr>
+<th>分区</th>
+<th>内容</th>
+<th>分析价值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>① Image Summary（段摘要）</strong></td>
+<td>每个段的名称、基址、十六进制大小、十进制大小</td>
+<td>分析固件 RAM&#x2F;Flash 占用率，检查各分区体积是否超出预期</td>
+</tr>
+<tr>
+<td><strong>② Module Summary（模块摘要）</strong></td>
+<td>每个段来自哪个 .o 文件，以及该文件的调试信息段（.debug_abbrev、.debug_str 等）</td>
+<td>追溯某个段来自哪个源文件，定位体积异常的文件</td>
+</tr>
+<tr>
+<td><strong>③ Global Symbols（全局符号表）</strong></td>
+<td>所有全局符号（函数名、变量名）按地址排序，每个符号的地址和大小</td>
+<td>查找变量&#x2F;函数的最终地址，验证链接脚本分配是否符合预期</td>
+</tr>
+<tr>
+<td><strong>④ Global Cross Reference（全局交叉引用）</strong></td>
+<td>每个符号在哪里定义、被哪些其他 .o 引用，以及引用的地址</td>
+<td>分析模块间依赖关系，排查未定义符号或重复定义错误</td>
+</tr>
+</tbody></table>
+<p><img src="/../images/image-20260614025817858.png" alt="MAP文件分区结构图"></p>
+<h3 id="3-3-版本号提取的工程实践"><a href="#3-3-版本号提取的工程实践" class="headerlink" title="3.3 版本号提取的工程实践"></a>3.3 版本号提取的工程实践</h3><p>一个典型的工程应用场景是：从编译出的固件二进制中直接读取版本号字符串，而无需源代码参与。具体做法是：</p>
+<ol>
+<li><strong>定义阶段</strong>：在源码中通过 <code>#pragma ghs section rodata = &quot;.SW_VERSION_STRING&quot;</code> 将版本号放入特殊命名的段。</li>
+<li><strong>映射阶段</strong>：在 LD 文件的 SECTIONS 块中，将 <code>.SW_VERSION_STRING</code> 映射到 Flash 中的固定物理地址（如 0xA0094100）。</li>
+<li><strong>读取阶段</strong>：固件烧录后，直接从 MAP 文件的 Image Summary 或 Global Symbols 中查得 SW_VERSION_STRING 所在地址。例如 VCUPLUS 的 GM_IDC_VCUPLUS_BL.map 中可直接查到 <code>SW_VERSION_STRING</code> 位于 <code>0xA0094100</code>，用此地址在 .s19 文件中偏移读取即为版本号字符串。</li>
+</ol>
+<p>这个机制在生产环境中尤为重要：即使源代码不可得，只要手握 MAP 文件和固件，就能定位并提取任意已知符号的数据。</p>
+<h2 id="4-总结"><a href="#4-总结" class="headerlink" title="4. 总结"></a>4. 总结</h2><p>本文围绕嵌入式编译构建链路展开：首先梳理了 CMake、CMakeLists.txt、<code>.cmake</code> 工具链文件、Ninja 与 GHS 编译器&#x2F;链接器各组件的核心概念与作用，明确了各层工具的职责边界；随后按时间顺序解析了构建配置、并行编译、归档、链接四阶段的完整时序，并通过项目五层传参链路（Build.bat → Python → CMake → Ninja → GHS）串联起完整的工具协作关系；在此基础上深入分析了 LD 文件中 MEMORY 地址声明与 SECTIONS 段映射两大核心机制，以及 MAP 文件四个分区的内容含义与典型工程应用场景。</p>
+<p>理解编译链路各环节的原理，不仅仅是调试固件的基础，更是进行<strong>内存优化、固件体积控制以及二进制可观测性</strong>工作的前提，对嵌入式开发设计时的理念有很大的帮助。</p>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
