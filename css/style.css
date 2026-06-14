@@ -417,6 +417,13 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
         white-space: pre-wrap;
         word-break: break-all;
     }
+
+    /* 平板端表格横向滚动 */
+    .post-body table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 @media (max-width: 600px) {
@@ -488,5 +495,13 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .post-body pre code {
     white-space: pre-wrap;
     word-break: break-all;
+  }
+
+  /* 手机端表格横向滚动，防止撑破屏幕 */
+  .post-body table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
   }
 }
