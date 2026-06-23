@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            chtml: {
+                linebreaks: {
+                    automatic: true,
+                    width: 'container'
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">AUTOSAR 概念精简与建项全流程</h1>
+    
+    
+    <div class="post-meta">
+        <span>写于：2026-06-24</span>
+    </div>
+    
+    <div class="post-body">
+        <h2 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h2><p>​		在 VCUPlus（基于英飞凌 TC397 的整车控制器）项目里接触 AUTOSAR 后，把这块知识做了精简梳理。这篇文章主要梳理：<strong>AUTOSAR 的核心概念</strong>（分层架构、SWC&#x2F;RTE&#x2F;BSW、文件格式、接口类型），以及<strong>从零创建一个 AUTOSAR 功能的完整步骤</strong>。所有路径、模块名均落地到 VCUPlus 项目真实结构，便于复盘。</p>
+<h2 id="第一章：AUTOSAR-核心概念"><a href="#第一章：AUTOSAR-核心概念" class="headerlink" title="第一章：AUTOSAR 核心概念"></a>第一章：AUTOSAR 核心概念</h2><h3 id="1-AUTOSAR-是什么、为什么要分层"><a href="#1-AUTOSAR-是什么、为什么要分层" class="headerlink" title="1. AUTOSAR 是什么、为什么要分层"></a>1. AUTOSAR 是什么、为什么要分层</h3><p>传统裸机开发直接操作寄存器，在汽车电子里有三个致命问题：<strong>换芯片代码全作废、软件无法跨项目复用、无法满足 ISO 26262 功能安全</strong>。</p>
+<p><strong>AUTOSAR（AUTomotive Open System ARchitecture）</strong> 是全球标准化的汽车软件架构，核心思想是<strong>分层 + 标准化接口</strong>：每层只通过定义好的接口与上下层通信，换芯片只需换最底层驱动，应用层一行不用改。AUTOSAR 交付的是<strong>规范（方法论 + 元模型 + ARXML 格式）</strong>，厂商据此实现工具链（Vector DaVinci、ETAS ISOLAR、EB tresos）。</p>
+<h3 id="2-三层软件架构"><a href="#2-三层软件架构" class="headerlink" title="2. 三层软件架构"></a>2. 三层软件架构</h3><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>全称</th>
+<th>职责</th>
+<th>代码来源</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>应用层 ASW</strong></td>
+<td>Application Layer</td>
+<td>整车业务逻辑，与硬件完全解耦</td>
+<td>框架工具生成 + 逻辑手写</td>
+</tr>
+<tr>
+<td><strong>RTE</strong></td>
+<td>Runtime Environment</td>
+<td>应用与底层的通信枢纽，实现软硬解耦</td>
+<td><strong>100% 工具生成，禁止手改</strong></td>
+</tr>
+<tr>
+<td><strong>BSW</strong></td>
+<td>Basic Software</td>
+<td>OS &#x2F; 通信 &#x2F; 诊断 &#x2F; 存储等基础服务 + 硬件驱动</td>
+<td>工具配置生成</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>RTE 是关键</strong>：应用层调 <code>Rte_Read/Write/Call</code> 时，完全不知道数据来自 CAN 还是另一个 SWC。它是一堆”胶水代码”，把标准化的 SWC 接口和 BSW 能力一一映射。</p>
+</blockquote>
+<h3 id="3-BSW-的四层细分"><a href="#3-BSW-的四层细分" class="headerlink" title="3. BSW 的四层细分"></a>3. BSW 的四层细分</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">┌─────────────────────────────┐</span><br><span class="line">│  服务层 Services            │  OS、Com、Dcm/Dem、NvM、EcuM、BswM</span><br><span class="line">├─────────────────────────────┤</span><br><span class="line">│  ECU 抽象层                  │  CanIf、LinIf、IoHwAb（封装设备访问）</span><br><span class="line">├─────────────────────────────┤</span><br><span class="line">│  MCU 抽象层 MCAL            │  直接驱动寄存器：ADC、DIO、PWM、Can</span><br><span class="line">├─────────────────────────────┤</span><br><span class="line">│  复杂驱动 CDD                │  旁路标准栈的特殊高性能驱动</span><br><span class="line">└─────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>MCAL</strong> 由芯片厂提供（如英飞凌 MC-ISAR 包），经 ASIL 功能安全预认证，<strong>必须工具生成不可手写</strong>。</li>
+<li><strong>CDD</strong> 是逃生口：标准栈覆盖不了的硬实时外设走旁路直接访问硬件。</li>
+</ul>
+<h3 id="4-核心术语速查"><a href="#4-核心术语速查" class="headerlink" title="4. 核心术语速查"></a>4. 核心术语速查</h3><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>全称</th>
+<th>大白话</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>SWC</strong></td>
+<td>Software Component</td>
+<td>功能黑盒子，含多个 Runnable，通过 Port 对外通信</td>
+</tr>
+<tr>
+<td><strong>Runnable</strong></td>
+<td>Runnable Entity</td>
+<td>SWC 内可被 OS 调度的执行函数（周期&#x2F;事件触发）</td>
+</tr>
+<tr>
+<td><strong>Port &#x2F; Interface</strong></td>
+<td>Port</td>
+<td>SWC 的对外插头；接口分 S&#x2F;R、C&#x2F;S 两类</td>
+</tr>
+<tr>
+<td><strong>RTE</strong></td>
+<td>Runtime Environment</td>
+<td>连接 SWC↔SWC、SWC↔BSW 的通信管道</td>
+</tr>
+<tr>
+<td><strong>VFB</strong></td>
+<td>Virtual Function Bus</td>
+<td>所有 SWC 通信的逻辑总线，RTE 是其在 ECU 上的实现</td>
+</tr>
+</tbody></table>
+<p><strong>两种接口类型</strong>：</p>
+<ul>
+<li><strong>S&#x2F;R（Sender&#x2F;Receiver）</strong>：广播式数据流，<code>Rte_Read_*</code> &#x2F; <code>Rte_Write_*</code>，用于信号、状态值。</li>
+<li><strong>C&#x2F;S（Client&#x2F;Server）</strong>：请求-应答式服务，<code>Rte_Call_*</code>，用于”读时间””请求关机”等操作。</li>
+</ul>
+<h3 id="5-文件格式速查"><a href="#5-文件格式速查" class="headerlink" title="5. 文件格式速查"></a>5. 文件格式速查</h3><p>AUTOSAR 项目文件分三类：<strong>设计图纸</strong>（给工具看）、<strong>工程源码</strong>（参与编译）、<strong>固件产物</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>格式</th>
+<th>全称</th>
+<th>本质</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>.arxml</code></td>
+<td>AUTOSAR XML</td>
+<td>设计图纸</td>
+<td>SWC 接口、BSW 描述、系统信息，所有工具的唯一语言</td>
+</tr>
+<tr>
+<td><code>.dpa</code></td>
+<td>DaVinci Project Archive</td>
+<td>BSW 工程入口</td>
+<td>记录引用的 ARXML、模块、输出路径</td>
+</tr>
+<tr>
+<td><code>.dvp/.dvg</code></td>
+<td>DaVinci Project&#x2F;Group</td>
+<td>SWC 设计</td>
+<td>组件类型定义，Developer 私有格式</td>
+</tr>
+<tr>
+<td><code>.c/.h</code>（生成）</td>
+<td>—</td>
+<td>工程源码</td>
+<td>RTE 接口、BSW 配置，<strong>禁止手改</strong></td>
+</tr>
+<tr>
+<td><code>.c/.h</code>（手写）</td>
+<td>—</td>
+<td>工程源码</td>
+<td>Runnable 业务逻辑，工程师自由编写</td>
+</tr>
+<tr>
+<td><code>.hex/.s19</code></td>
+<td>Intel HEX &#x2F; S-Record</td>
+<td>固件产物</td>
+<td>产线刷写（带地址信息）</td>
+</tr>
+<tr>
+<td><code>.out</code></td>
+<td>GHS Executable</td>
+<td>固件产物</td>
+<td>带调试信息，Lauterbach 加载</td>
+</tr>
+<tr>
+<td><code>.gbf</code></td>
+<td>GM Boot Format</td>
+<td>固件产物</td>
+<td>GM 产线专用签名固件</td>
+</tr>
+</tbody></table>
+<h3 id="6-Classic-vs-Adaptive"><a href="#6-Classic-vs-Adaptive" class="headerlink" title="6. Classic vs Adaptive"></a>6. Classic vs Adaptive</h3><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Classic (CP)</th>
+<th>Adaptive (AP)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定位</td>
+<td>深度嵌入式、实时控制</td>
+<td>高性能计算、座舱&#x2F;智驾</td>
+</tr>
+<tr>
+<td>系统</td>
+<td>AUTOSAR OS</td>
+<td>POSIX（基于 Linux）</td>
+</tr>
+<tr>
+<td>通信</td>
+<td>CAN&#x2F;LIN&#x2F;FlexRay</td>
+<td>以太网 SOME&#x2F;IP、DDS</td>
+</tr>
+<tr>
+<td>调度</td>
+<td>静态、确定性强</td>
+<td>动态、面向服务</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>VCUPlus 的 TC397 跑 Classic；座舱 SoC 跑 Adaptive，两者经以太网交互。</p>
+</blockquote>
+<h2 id="第二章：创建-AUTOSAR-项目的全流程"><a href="#第二章：创建-AUTOSAR-项目的全流程" class="headerlink" title="第二章：创建 AUTOSAR 项目的全流程"></a>第二章：创建 AUTOSAR 项目的全流程</h2><h3 id="开发链路总览"><a href="#开发链路总览" class="headerlink" title="开发链路总览"></a>开发链路总览</h3><p>AUTOSAR 的代码大部分是<strong>工具根据配置自动生成</strong>的，所以必须”先画图纸再填砖块”：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">阶段一 SWC 设计（DaVinci Developer）    →  ARXML / .dvg</span><br><span class="line">    ↓</span><br><span class="line">阶段二 应用层业务逻辑手写               →  Runnable C 代码</span><br><span class="line">    ↓</span><br><span class="line">阶段三 BSW 底层配置（DaVinci Configurator）→  .dpa / BSW C 代码</span><br><span class="line">    ↓</span><br><span class="line">阶段四 RTE 生成（DVCfgCmd）            →  Rte.c / Rte_*.h</span><br><span class="line">    ↓</span><br><span class="line">阶段五 代码整合与工程适配               →  整合到 CMake 体系</span><br><span class="line">    ↓</span><br><span class="line">编译构建（CMake + Ninja + GHS）        →  .hex / .out 固件</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p><strong>为什么不能先写代码再配置？</strong> RTE 代码由 SWC 接口（ARXML）自动生成。不定接口，工具不知道要生成什么样的 <code>Rte_Read/Write</code>，应用层也编不过。</p>
+</blockquote>
+<h3 id="阶段一：系统架构与-SWC-设计"><a href="#阶段一：系统架构与-SWC-设计" class="headerlink" title="阶段一：系统架构与 SWC 设计"></a>阶段一：系统架构与 SWC 设计</h3><p><strong>工具</strong>：DaVinci Developer。<strong>输入</strong>：需求文档、通信矩阵。<strong>输出</strong>：<code>.dvg</code>（私有格式）+ SWC 接口 ARXML。</p>
+<ol>
+<li><strong>新建 SWC 组件类型</strong>（如 <code>SWC_INFO_RTC</code>）。</li>
+<li><strong>定义端口与接口</strong>（契约优先）：<ul>
+<li>S&#x2F;R 接收 <code>RTC_Data_CANSigR</code>（从 CAN 收 RTC 同步数据）</li>
+<li>S&#x2F;R 发送 <code>LocalDateTimeP</code>（向其他 SWC 发布本地时间）</li>
+<li>C&#x2F;S 客户端 <code>RTC_Get_Date_TimeC</code>（调用下层 SWC 获取硬件时间）</li>
+</ul>
+</li>
+<li><strong>定义 Runnable 与触发方式</strong>：<code>RTC_DateTime_Run</code>（TimingEvent 周期触发）、<code>RTC_LocalDateTime_onCAN</code>（DataReceivedEvent）。</li>
+<li><strong>File → Export → AUTOSAR XML</strong> 导出标准 ARXML。</li>
+</ol>
+<h3 id="阶段二：应用层-SWC-业务逻辑开发"><a href="#阶段二：应用层-SWC-业务逻辑开发" class="headerlink" title="阶段二：应用层 SWC 业务逻辑开发"></a>阶段二：应用层 SWC 业务逻辑开发</h3><p><strong>铁律：应用层绝不直接操作硬件、不直接调 BSW 函数</strong>，所有数据交换走 <code>Rte_Read/Write/Call</code>。</p>
+<p>Developer 生成框架（<code>Rte_&lt;SWC&gt;.h</code>、Runnable 空函数），工程师只填 Runnable 函数体。真实示例：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// RTC_DateTime_Run —— 周期读取时间并发布</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">RTC_DateTime_Run</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (isInitDone) &#123;</span><br><span class="line">        RTC_Get_Date_Time(&amp;timeOfDay, &amp;date, &amp;errStatus); <span class="comment">// 展开 Rte_Call_* 读硬件时间</span></span><br><span class="line">        <span class="keyword">if</span> (errStatus == CeRTC_OPERATIONSUCCESSFUL)</span><br><span class="line">            RTCHandler_GetRAMData(&amp;rtcData.ipc_localoffset, cb); <span class="comment">// 读时区偏移</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// NotifyRTCAlarmExpiry —— 闹钟到期，写网络请求</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">NotifyRTCAlarmExpiry</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">    (<span class="type">void</span>)Rte_Write_SWC_INFO_RTC_RTCNetReq_Val(<span class="number">1</span>); <span class="comment">// 应用层只写端口，不管去哪</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="阶段三：BSW-底层模块配置"><a href="#阶段三：BSW-底层模块配置" class="headerlink" title="阶段三：BSW 底层模块配置"></a>阶段三：BSW 底层模块配置</h3><p><strong>工具</strong>：DaVinci Configurator Classic。Developer 画 SWC 积木，Configurator 搭地基（配 OS、Com、Dcm 等参数）。</p>
+<ol>
+<li><strong>导入系统 ARXML</strong>，加载 <code>.dpa</code> 工程（<code>conv-mvp.dpa</code>）。</li>
+<li><strong>配置 MCAL</strong>：<code>Can_17_McmCan</code>（波特率&#x2F;邮箱）、<code>Adc</code>、<code>Dio</code>、<code>Gpt</code>、<code>Fls</code>。</li>
+<li><strong>配置 BSW 服务模块</strong>：<code>Com</code>（信号路由到 <code>Rte_Read_RTC_Data_CANSig</code>）、<code>Os</code>（建 Task）、<code>EcuM</code>（启动序列）。</li>
+<li><strong>Runnable ↔ Task 映射</strong>（关键）：把 <code>RTC_DateTime_Run</code> 挂到 <code>Task_10ms</code>，<code>RTC_LocalDateTime_onCAN</code> 设为事件触发。</li>
+<li><strong>校验并生成</strong> → BSW C 代码输出到 <code>GenData/</code>。</li>
+</ol>
+<h3 id="阶段四：RTE-生成与对接"><a href="#阶段四：RTE-生成与对接" class="headerlink" title="阶段四：RTE 生成与对接"></a>阶段四：RTE 生成与对接</h3><p><strong>工具</strong>：<code>DVCfgCmd.exe</code>（Configurator 命令行版）。<strong>输入</strong>：<code>.dpa</code> + 全部 ARXML。<strong>输出</strong>：<code>Rte.c</code>、<code>Rte_SWC_*.h</code>、调度代码到 <code>GenData/</code>。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Ninja 检测 ARXML 变化 → DVCfgCmd -p conv-mvp.dpa --generate</span><br><span class="line">  → GenDataTemp/ → 展平子目录 → copy_if_different → GenData/</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>RTE 代码 100% 工具生成，禁止手改</strong>。</li>
+<li>完整数据流：CAN → MCAL → CanIf → Com → RTE → <code>Rte_Read_*</code> → SWC 业务 → <code>Rte_Write_*</code> → RTE 路由转发。</li>
+<li><strong>增量加速</strong>：只改业务逻辑用 <code>--rte NOGEN</code> 跳过生成器（省 10-20 分钟）；改了 ARXML 才需 <code>--rte GEN</code>。</li>
+</ul>
+<h3 id="阶段五：代码整合与工程适配"><a href="#阶段五：代码整合与工程适配" class="headerlink" title="阶段五：代码整合与工程适配"></a>阶段五：代码整合与工程适配</h3><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>放置目录</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SWC 业务源码</td>
+<td><code>Autosar/Application/GM/gmGemIPCSwc/ImpArch/SWC_*_SRC/</code></td>
+</tr>
+<tr>
+<td>SWC ARXML</td>
+<td>同目录 <code>arxml/</code></td>
+</tr>
+<tr>
+<td>RTE 头文件</td>
+<td>同目录 <code>inc/</code></td>
+</tr>
+<tr>
+<td>BSW 生成代码</td>
+<td><code>Vector_bsw_cfg/GM/VCUPLUS_TC39x/GenData/</code></td>
+</tr>
+<tr>
+<td>SWC CMake</td>
+<td>每个 SWC 目录自己的 <code>CMakeLists.txt</code></td>
+</tr>
+</tbody></table>
+<p>新增普通业务 SWC 一般<strong>不需要改链接脚本</strong>，顶层 CMake 自动扫描 <code>ImpArch/</code>。</p>
+<h2 id="第三章：构建链路速记"><a href="#第三章：构建链路速记" class="headerlink" title="第三章：构建链路速记"></a>第三章：构建链路速记</h2><p>VCUPlus 构建经六层：<strong>入口脚本（Action1_Build.py）→ CMake → Ninja → Green Hills 编译（cctri）→ 链接（cxtri + .ld）→ 后处理（签名 .gbf）</strong>。</p>
+<p>关键构建参数：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>可选值</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>-o</code></td>
+<td>BM&#x2F;BL&#x2F;BLU&#x2F;APP&#x2F;HSM</td>
+<td>选择构建分区</td>
+</tr>
+<tr>
+<td><code>-t</code></td>
+<td>DEBUG&#x2F;USER&#x2F;PROD</td>
+<td>编译类型（优化等级、调试信息）</td>
+</tr>
+<tr>
+<td><code>-tc</code></td>
+<td>TC377T&#x2F;TC387Q&#x2F;TC397X</td>
+<td>目标芯片</td>
+</tr>
+<tr>
+<td><code>-r</code></td>
+<td>GEN&#x2F;NOGEN</td>
+<td>是否重新生成 RTE</td>
+</tr>
+</tbody></table>
+<h2 id="第四章：要点速记"><a href="#第四章：要点速记" class="headerlink" title="第四章：要点速记"></a>第四章：要点速记</h2><ul>
+<li><strong>描述优先</strong>：先定 SWC 接口（ARXML）再动 BSW，ARXML 是唯一真源。</li>
+<li><strong>RTE 是隔离带</strong>：应用层永远不碰寄存器，否则解耦失效。</li>
+<li><strong>换 MCU 只重配 MCAL</strong>：上层 BSW 基本不动——这就是 AUTOSAR 的复用价值。</li>
+<li><strong>生成代码不可手改</strong>：RTE、BSW 配置代码改了就被重新生成覆盖；要改改配置再 Generate。</li>
+<li><strong>CDD 是逃生口</strong>：标准栈搞不定的硬实时走旁路，但需在文档标注。</li>
+<li><strong>工具链兼容有坑</strong>：各家 ARXML 不完全兼容，跨工具迁移务必先 Validate。</li>
+</ul>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
