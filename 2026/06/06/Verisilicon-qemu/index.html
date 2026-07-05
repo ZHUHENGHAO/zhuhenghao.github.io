@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            chtml: {
+                linebreaks: {
+                    automatic: true,
+                    width: 'container'
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">VeriSilicon QEMU 模拟平台调试与 FIFO 排错笔记</h1>
+    
+    
+    <div class="post-meta">
+        <span>写于：2026-06-06</span>
+    </div>
+    
+    <div class="post-body">
+        <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>这篇博客记录了 VeriSilicon QEMU 模拟平台下的 SDK 工程组织、板级初始化、静态库链接、事件系统与 IMU FIFO 调试排错过程。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * @brief Structure of operations for board</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">BoardOperations_st</span> &#123;</span></span><br><span class="line">    <span class="type">int</span> (*init)(BoardDevice *board);</span><br><span class="line">    <span class="type">void</span> *(*find_device)(<span class="type">uint8_t</span> device_id);</span><br><span class="line">    <span class="type">void</span> (*get_wakeup_src)(<span class="type">uint8_t</span>, <span class="type">uint8_t</span> *);</span><br><span class="line">&#125; BoardOperations;</span><br><span class="line"></span><br><span class="line"><span class="type">const</span> BoardOperations qemu_board_ops = &#123;</span><br><span class="line"></span><br><span class="line">  .init     = qemu_board_init,</span><br><span class="line"></span><br><span class="line">  .find_device = qemu_board_find_device,</span><br><span class="line"></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+
+
+<ul>
+<li>关于 <code>.init = qemu_board_init,</code>：这是 C99 的“指定初始化器”（designated initializer），用于按成员名初始化结构体。</li>
+<li>语法示例：<code>const BoardOperations qemu_board_ops = &#123; .init = qemu_board_init, .find_device = qemu_board_find_device &#125;;</code></li>
+<li>含义：把 <code>BoardOperations</code> 类型的结构体 <code>qemu_board_ops</code> 里的 <code>init</code> 成员，赋值为函数 <code>qemu_board_init</code> 的地址。</li>
+<li>这是合法标准 C（C99 及以后），GCC &#x2F; Clang &#x2F; MSVC 都支持。</li>
+<li>比较：也可以用位置初始化，但指定初始化更清晰，也不受成员顺序影响.</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">task_init_app</span><span class="params">(<span class="type">void</span> *param)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> ret;</span><br><span class="line">  BoardDevice board_dev;</span><br><span class="line"></span><br><span class="line">  ret = board_register(board_get_ops());</span><br><span class="line">  ret = vsd_to_vpi(ret);</span><br><span class="line">  <span class="keyword">if</span> (ret != VPI_SUCCESS) &#123;</span><br><span class="line">  uart_printf(<span class="string">&quot;board register failed %d&quot;</span>, ret);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  ret = board_init((<span class="type">void</span> *)&amp;board_dev);</span><br><span class="line">  ret = vsd_to_vpi(ret);</span><br><span class="line">  <span class="keyword">if</span> (ret != VPI_SUCCESS) &#123;</span><br><span class="line">    uart_printf(<span class="string">&quot;board init failed %d&quot;</span>, ret);</span><br><span class="line">    <span class="keyword">goto</span> <span class="built_in">exit</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (board_dev.name) &#123;</span><br><span class="line">    uart_printf(<span class="string">&quot;Board: %s&quot;</span>, board_dev.name);</span><br><span class="line">  &#125;</span><br><span class="line">  uart_printf(<span class="string">&quot;Hello VeriHealthi!\r\n&quot;</span>);</span><br><span class="line">    </span><br><span class="line">  osal_create_task(task_sample, <span class="string">&quot;task_sample&quot;</span>, <span class="number">512</span>, <span class="number">4</span>, <span class="literal">NULL</span>);</span><br><span class="line"><span class="built_in">exit</span>:</span><br><span class="line">  osal_delete_task(<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<ul>
+<li>关于“把操作表告知平台框架，意义在哪”——直观解释：</li>
+<li><code>BoardOperations</code>（见 board.h）是一个函数指针表，类似面向对象里的 vtable &#x2F; 接口。</li>
+<li>它包含 <code>init</code>、<code>find_device</code> 等回调。</li>
+<li><code>board_get_ops()</code> 在 <code>bsp/src/qemu_board.c</code> 返回具体板子的 <code>qemu_board_ops</code>。</li>
+<li><code>board_register(board_get_ops())</code> 的作用是：把这张“功能表”交给框架保存起来。</li>
+<li>这样框架就能在统一位置调用板级实现，而不用硬编码每个板子的函数。</li>
+<li><code>board_init(&amp;board_dev)</code> 的作用是：统一调用已注册的 <code>ops-&gt;init(&amp;board_dev)</code> 完成硬件初始化。</li>
+<li>它还会把运行时信息，比如 <code>board_dev.name</code>，填入 <code>board_dev</code>。</li>
+<li>好处主要有四个：<ul>
+<li>解耦：框架代码不依赖具体板子实现。</li>
+<li>可插拔：同一套框架能管理多种板子。</li>
+<li>可模拟：可以替换为 <code>imu_simulator_ops</code>，方便在 QEMU 或单元测试中运行。</li>
+<li>生命周期统一：注册阶段负责“谁能做事”，初始化阶段负责“开始做事”。</li>
+</ul>
+</li>
+<li>为什么看起来“只要硬件初始化就行”？</li>
+<li>因为硬件初始化确实是必须的。</li>
+<li>但注册&#x2F;操作表提供了工程组织和扩展能力。</li>
+<li>如果项目只含单一板子，且实现固定，直接调用初始化也可以。</li>
+<li>如果系统支持多个板子、模拟&#x2F;真实切换或插件式驱动，操作表 + 注册模式会更灵活、更易维护。</li>
+<li>源码参考（可查看）：<ul>
+<li>接口声明：board.h</li>
+<li>qemu 板实现：qemu_board.c</li>
+<li>在 main.c 中的调用流程：<code>board_register(board_get_ops());</code> → <code>board_init(&amp;board_dev);</code></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="QEMU-是什么"><a href="#QEMU-是什么" class="headerlink" title="QEMU 是什么"></a>QEMU 是什么</h3><p><strong>QEMU</strong> 是一个开源的”<strong>虚拟机</strong>“软件。它的作用是：<strong>在你的 Windows 电脑上，完全模拟一块 RISC-V 芯片的硬件</strong>。</p>
+<p>打个比方：</p>
+<ul>
+<li>你的代码是为”一台不存在的 RISC-V 手机”写的</li>
+<li>QEMU 就是一个”模拟器手机”，可以在 Windows 上假装运行这台不存在的手机</li>
+<li>代码不需要任何修改，直接在这台”假手机”上跑</li>
+</ul>
+<hr>
+<h3 id="qemu-文件夹是什么"><a href="#qemu-文件夹是什么" class="headerlink" title="qemu 文件夹是什么"></a><code>qemu</code> 文件夹是什么</h3><p><code>qemu/</code> 只是一个 Eclipse 项目文件夹：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">qemu/</span><br><span class="line">├── .cproject          ← 编译规则、链接库、选项</span><br><span class="line">├── debug_qemu.launch  ← 调试启动配置</span><br><span class="line">├── Release/           ← 编译输出目录</span><br><span class="line">└── galaxy_sdk/        ← 源代码（路径引用）</span><br></pre></td></tr></table></figure>
+
+<p>它本质上就是一个 Eclipse “跑在 QEMU 上”的运行配置，<br>真正的代码在 <code>galaxy_sdk/</code> 里。</p>
+<p>编译流程：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">qemu/.cproject 配置</span><br><span class="line">  ↓ riscv64-unknown-elf-gcc 交叉编译</span><br><span class="line">  ↓ 编译 galaxy_sdk/ 的 C 代码</span><br><span class="line">  ↓ 链接预编译 .a 库</span><br><span class="line">  → 生成 qemu.out（RISC-V ELF）</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="galaxy-sdk-和-qemu-的关系"><a href="#galaxy-sdk-和-qemu-的关系" class="headerlink" title="galaxy_sdk 和 qemu 的关系"></a><code>galaxy_sdk</code> 和 <code>qemu</code> 的关系</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">galaxy_sdk/        ← 应用代码</span><br><span class="line">├── tasks/         ← imu_task.c, algo_task.c</span><br><span class="line">├── algorithm/     ← gesture_algorithm.c 等</span><br><span class="line">├── drivers/       ← hal_imu.c, hal_rtc.c</span><br><span class="line">├── bsp/           ← qemu_board.c</span><br><span class="line">├── os/            ← FreeRTOS 源码</span><br><span class="line">├── osal/          ← OS 抽象层</span><br><span class="line">└── prebuilts/     ← 预编译 .a 库</span><br><span class="line"></span><br><span class="line">qemu/              ← 编译配置 + 启动参数</span><br><span class="line">├── .cproject      ← 编译器/库/输出格式</span><br><span class="line">└── *.launch       ← qemu-system-riscv32 运行</span><br></pre></td></tr></table></figure>
+
+<p><strong>如果只跑真实硬件</strong>，不需要 <code>qemu/</code> 整个文件夹。</p>
+<p>你只需要 <code>galaxy_sdk/</code> + 硬件板子的启动文件。</p>
+<p>这里说的启动文件，通常包括链接脚本和固件烧录工具。</p>
+<p><code>qemu/</code> 纯粹是为了在电脑上模拟运行而存在的.</p>
+<hr>
+<h3 id="为什么-Nuclei-Studio-能显示串口打印"><a href="#为什么-Nuclei-Studio-能显示串口打印" class="headerlink" title="为什么 Nuclei Studio 能显示串口打印"></a>为什么 Nuclei Studio 能显示串口打印</h3><p>这是 <strong>Semihosting（半主机）</strong> 机制：</p>
+<p>程序并不是把串口数据真的发到硬件 UART 上。</p>
+<p>它是通过 QEMU 提供的调试通道，<br>把输出转给宿主机上的 Nuclei Studio。</p>
+<p>所以这里看到的“串口打印”，本质上是模拟器帮你做了转发。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">你的代码 → QEMU → Nuclei Studio 控制台</span><br><span class="line">printf(&quot;Hello&quot;) 被 QEMU 拦截</span><br><span class="line">  → 转发到 Windows stdout（semihosting）</span><br></pre></td></tr></table></figure>
+
+<p>你的代码里调用的 <code>uart_printf()</code>，最终会通过 <strong>semihosting</strong> 指令通知 QEMU。</p>
+<p>这里的 semihosting 是一种 RISC-V 特殊指令。</p>
+<p>QEMU 收到后，会把这些数据转发到启动它的父进程，也就是 Nuclei Studio。</p>
+<p>Nuclei Studio 再把它们显示在下方的控制台窗口里.</p>
+<p><strong>这个过程完全不需要真实的 UART 串口硬件</strong>，全部在 QEMU 模拟器内部完成。</p>
+<hr>
+<h3 id="一张图总结"><a href="#一张图总结" class="headerlink" title="一张图总结"></a>一张图总结</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">【真实 RISC-V 芯片（硬件）】</span><br><span class="line">  烧录固件 → 直接跑 galaxy_sdk</span><br><span class="line">  IMU 数据从真实 GPIO 进来</span><br><span class="line">  UART 从真实引脚输出</span><br><span class="line"></span><br><span class="line">【Windows 电脑（QEMU 模拟）】</span><br><span class="line">  qemu-system-riscv32 模拟器</span><br><span class="line">    ├ 模拟 RISC-V CPU</span><br><span class="line">    ├ 模拟 nuclei_evalsoc 开发板</span><br><span class="line">    └ galaxy_sdk 代码跑在上面</span><br><span class="line">        └ semihosting → 控制台输出</span><br></pre></td></tr></table></figure>
+
+<p>所以：**<code>galaxy_sdk</code> 是核心，<code>qemu</code> 只是让它能在 Windows 上模拟运行的工具**。真实硬件上直接烧录 <code>galaxy_sdk</code> 编译出的固件即可。</p>
+<h2 id="a文件的理解"><a href="#a文件的理解" class="headerlink" title=".a文件的理解"></a>.a文件的理解</h2><p><code>.a</code> 是 <strong>Archive</strong> 的缩写，Unix&#x2F;Linux 下的<strong>静态库文件</strong>。</p>
+<h3 id="类比理解"><a href="#类比理解" class="headerlink" title="类比理解"></a>类比理解</h3><p>想象一个<strong>打包好的零件箱</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>.a 文件</th>
+<th>里面装的零件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bsp_riscv.a</code></td>
+<td><code>qemu_board.o</code>、<code>startup.o</code> 等</td>
+</tr>
+<tr>
+<td><code>driver_riscv.a</code></td>
+<td><code>hal_imu.o</code>、<code>imu_simulator_ops</code> 等</td>
+</tr>
+</tbody></table>
+<p>每个 <code>.o</code> 文件就是之前编译好的<strong>目标文件</strong>（二进制机器码）。</p>
+<h3 id="链接器怎么用"><a href="#链接器怎么用" class="headerlink" title="链接器怎么用"></a>链接器怎么用</h3><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">qemu.out 链接过程：</span><br><span class="line"></span><br><span class="line">  你的代码（机器码）</span><br><span class="line">    main.o</span><br><span class="line">    imu_task.o</span><br><span class="line">    ...</span><br><span class="line">  + 预编译库（打包的 .o）</span><br><span class="line">    bsp_riscv.a</span><br><span class="line">    driver_riscv.a</span><br><span class="line">    osal_riscv.a</span><br><span class="line">  ↓</span><br><span class="line">  链接器拆出需要的 .o → 拼成 qemu.out</span><br></pre></td></tr></table></figure>
+
+<p>链接器根据你代码里 <code>extern</code> 的函数名（如 <code>imu_simulator_ops</code>），去 <code>.a</code> 里**找对应的 <code>.o</code>**，把它”拆出来”拼进最终的 <code>qemu.out</code>。</p>
+<h3 id="为什么叫”静态”库"><a href="#为什么叫”静态”库" class="headerlink" title="为什么叫”静态”库"></a>为什么叫”静态”库</h3><p>因为链接时直接把代码<strong>拷贝</strong>进最终的二进制里（<code>qemu.out</code>），不依赖外部文件。相对的还有<strong>动态库</strong>（<code>.dll</code> &#x2F; <code>.so</code>），程序运行时才加载。</p>
+<h3 id="简单总结"><a href="#简单总结" class="headerlink" title="简单总结"></a>简单总结</h3><p><code>.a</code> &#x3D; <strong>预编译好的二进制代码包</strong>。</p>
+<p>它的作用是节省重复编译时间，也便于闭源保护。</p>
+<p>你链接时可以使用它，但看不到源码。</p>
+<p>VeriSilicon 把 IMU 模拟器这样封装起来，就是这个思路.</p>
+<h2 id="在QEMU模拟平台上使用dataReady中断从FIFO缓冲区中读取IMU数据时产生的错误："><a href="#在QEMU模拟平台上使用dataReady中断从FIFO缓冲区中读取IMU数据时产生的错误：" class="headerlink" title="在QEMU模拟平台上使用dataReady中断从FIFO缓冲区中读取IMU数据时产生的错误："></a>在QEMU模拟平台上使用dataReady中断从FIFO缓冲区中读取IMU数据时产生的错误：</h2><p><span style="color:#CC0000;"><strong>[IMU] Data-ready interrupt initialized, waiting for data…</strong></span></p>
+<p>好，现在让我把完整逻辑整理清楚。从反汇编里我已经定位到了关键信息，直接给出结论。</p>
+<h2 id="错误-vs-imu-sim-intr-config-error-when-read-gyro-accel-data-原因"><a href="#错误-vs-imu-sim-intr-config-error-when-read-gyro-accel-data-原因" class="headerlink" title="错误 vs-imu-sim@intr config error, when read gyro accel data! 原因"></a>错误 <code>vs-imu-sim@intr config error, when read gyro accel data!</code> 原因</h2><p>从 <code>qemu.lst</code> 反汇编写回 C 代码后，可以发现：</p>
+<p><code>bmi160_fifo_parsing_gyro_accel</code> 在解析 FIFO 前，会先做 <strong>6 项影子寄存器校验</strong>。</p>
+<p>这些值都从地址 <code>s1</code>，也就是 shadow config 区域里读取.</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// s1 = shadow config base（影子寄存器区）</span></span><br><span class="line"><span class="comment">// 偏移 9/17 → accel_cfg[9]、gyro_cfg[1]</span></span><br><span class="line"><span class="keyword">if</span> (accel_cfg[<span class="number">9</span>]  != <span class="number">0x11</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"><span class="keyword">if</span> (gyro_cfg[<span class="number">1</span>]   != <span class="number">0x15</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 偏移 10/18 → accel_cfg[10]、gyro_cfg[2]</span></span><br><span class="line"><span class="keyword">if</span> (accel_cfg[<span class="number">10</span>] != <span class="number">0x07</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"><span class="keyword">if</span> (gyro_cfg[<span class="number">2</span>]   != <span class="number">0x07</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 偏移 11/19 → accel_cfg[11]、gyro_cfg[3]</span></span><br><span class="line"><span class="keyword">if</span> (accel_cfg[<span class="number">11</span>] != <span class="number">0x08</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"><span class="keyword">if</span> (gyro_cfg[<span class="number">3</span>]   != <span class="number">0x07</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 偏移 12/20 → accel_cfg[12]、gyro_cfg[4]</span></span><br><span class="line"><span class="keyword">if</span> (accel_cfg[<span class="number">12</span>] != <span class="number">0x02</span>) <span class="keyword">goto</span> error_intr;</span><br><span class="line"><span class="keyword">if</span> (gyro_cfg[<span class="number">4</span>]   != <span class="number">0x02</span>) <span class="keyword">goto</span> error_intr;</span><br></pre></td></tr></table></figure>
+
+<p><strong>报错原因</strong>：如果直接调用 <code>hal_imu_set_accel_cfg</code> &#x2F; <code>hal_imu_set_gyro_cfg</code> 设置任意参数，<br>影子寄存器里这些“关键偏移”的值就会不符合 QEMU 硬编码的期望值。</p>
+<p>结果就是每帧数据都会触发 <code>intr config error</code>，解析直接失败并返回错误码.</p>
+<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><p><code>main.c</code> 里的 <strong>Step 4–5</strong> 就是针对性的修复：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// Step 4: 加载 QEMU 硬编码的默认值</span></span><br><span class="line">hal_imu_set_sensor_default_cfg(g_imu_dev);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Step 5: 只改 ODR 字段（偏移 10）</span></span><br><span class="line">hal_imu_set_accel_cfg(g_imu_dev, <span class="number">0</span>, <span class="number">0</span>, <span class="number">50</span>, IMU_SENSOR_ODR);</span><br><span class="line">hal_imu_set_gyro_cfg(g_imu_dev, <span class="number">0</span>, <span class="number">0</span>, <span class="number">50</span>, IMU_SENSOR_ODR);</span><br></pre></td></tr></table></figure>
+
+<p>两步配合：先拿 QEMU 要求的默认值保证其他字段全部对，再只改 ODR 一个字段。</p>
+<h2 id="现在的完整配置流程"><a href="#现在的完整配置流程" class="headerlink" title="现在的完整配置流程"></a>现在的完整配置流程</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Step 1  hal_imu_get_device()        → 获取设备句柄</span><br><span class="line">Step 2  hal_imu_enable_power()      → 上电</span><br><span class="line">Step 3  hal_imu_init()              → 初始化驱动</span><br><span class="line">Step 4  hal_imu_set_sensor_default_cfg() → 加载默认值</span><br><span class="line">Step 5  hal_imu_set_accel_cfg(ODR=50)    → accel 50Hz</span><br><span class="line">        hal_imu_set_gyro_cfg(ODR=50)     → gyro 50Hz</span><br><span class="line">Step 6  hal_imu_cfg_interrupt()     → watermark 中断</span><br><span class="line">Step 7  hal_imu_set_fifo_wm(49)     → 水位线 49 字节</span><br><span class="line">Step 8  hal_imu_set_fifo_cfg()      → FIFO: gyro+accel</span><br><span class="line">Step 9  hal_imu_flush_fifo()        → 清空旧数据</span><br><span class="line">Step 10 hal_imu_set_work_mode()     → normal 模式</span><br><span class="line">Step 11 hal_imu_enable_interrupt()  → 注册 ISR，开中断</span><br><span class="line">Step 12 while(1) 读 FIFO + 重 arm 中断</span><br></pre></td></tr></table></figure>
+
+<h2 id="FIFO-读取：读哪里？15-帧怎么来的？"><a href="#FIFO-读取：读哪里？15-帧怎么来的？" class="headerlink" title="FIFO 读取：读哪里？15 帧怎么来的？"></a>FIFO 读取：读哪里？15 帧怎么来的？</h2><p><strong>FIFO 本身在 QEMU 模拟器内部</strong>，不是主存里的数组。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">QEMU 模拟器内部结构（硬件建模）</span><br><span class="line">90000038 &lt;imu_fifo&gt;: byte_counter (uint32)</span><br><span class="line">9000003C &lt;imu_fifo+4&gt;: ... </span><br><span class="line">9000004C &lt;imu_cfg&gt;:   shadow config[0..N]</span><br></pre></td></tr></table></figure>
+
+<p>当 <code>hal_imu_read_gyro_accel</code> 被调用时：</p>
+<ol>
+<li>QEMU 模拟器的 <code>bmi160_get_fifo_data</code> 从 <code>imu_fifo.byte_counter</code> 读当前字节数</li>
+<li>计算 <code>frame_count = byte_counter / 4</code>（4 字节&#x2F;帧）</li>
+<li>按 4 字节&#x2F;帧从 <code>imu_fifo.data[]</code> 复制到 <code>ImuGyroAccelData</code> 数组（memcpy）</li>
+<li><code>byte_counter</code> 清零，释放空间给 timer 继续注入</li>
+</ol>
+<p><strong>49 字节 &#x2F; 4 ≈ 12 帧</strong>。</p>
+<p>但因为 timer 注入和 CPU 读取之间有时间差，实际 <code>byte_counter</code> 会积压到约 60 字节。</p>
+<p>也就是 <strong>≈ 15 帧</strong>。</p>
+<p>每次进来读一次，就会把 FIFO 里全部积压的数据读走。</p>
+<p>所以每次 <code>frame_count</code> 都接近 15。</p>
+<p><strong>FIFO 是 QEMU 里一块模拟的环形缓冲区</strong>。</p>
+<p>timer 每 200ms 往里写 49 字节，也就是 3 帧 gyro + 3 帧 accel。</p>
+<p>CPU 没读走就继续积压，满了就报 watermark 中断.</p>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

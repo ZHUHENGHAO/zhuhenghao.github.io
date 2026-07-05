@@ -64,7 +64,7 @@
             
 
             <article class="post-content">
-    <h1 class="post-title"></h1>
+    <h1 class="post-title">VeriSilicon SDK 工程搭建与 Event 系统说明</h1>
     
     
     <div class="post-meta">
@@ -72,17 +72,18 @@
     </div>
     
     <div class="post-body">
-        <h1 id="1-根据官方提供SDK去新建工程的方法和说明："><a href="#1-根据官方提供SDK去新建工程的方法和说明：" class="headerlink" title="1.根据官方提供SDK去新建工程的方法和说明："></a>1.根据官方提供SDK去新建工程的方法和说明：</h1><p>官方给的SDK文件夹目录如下：</p>
+        <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>这篇文章记录了 VeriSilicon QEMU 模拟平台下的 SDK 工程组织、板级初始化、头文件路径配置、Event 系统使用，以及 IMU FIFO 调试排错过程。</p>
+<h2 id="1-根据官方提供-SDK-去新建工程的方法和说明："><a href="#1-根据官方提供-SDK-去新建工程的方法和说明：" class="headerlink" title="1. 根据官方提供 SDK 去新建工程的方法和说明："></a>1. 根据官方提供 SDK 去新建工程的方法和说明：</h2><p>官方给的SDK文件夹目录如下：</p>
 <p><img src="/../images/image-20260606203604053.png" alt="image-20260606203604053"></p>
 <ul>
 <li><strong>galaxy_sdk</strong>：SDK 的源代码与头文件集合（BSP&#x2F;OS&#x2F;驱动&#x2F;模块&#x2F;链接脚本等），是实际要编译的工程源码根。</li>
-<li><strong>qemu****：</strong>Nuclei Studio&#x2F;Eclipse CDT 的工程“壳”和构建产物目录，含工程元数据 [.project](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 与 [.cproject](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)、QEMU 调试启动配置 [debug_qemu.launch](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)，以及自动生成的构建脚本 [makefile](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)（它会引用 galaxy_sdk 下的源码并产出     qemu.out）。</li>
+<li><strong>qemu****：</strong>Nuclei Studio&#x2F;Eclipse CDT 的工程“壳”和构建产物目录，含工程元数据 .project 与 .cproject、QEMU 调试启动配置 debug_qemu.launch，以及自动生成的构建脚本 makefile（它会引用 galaxy_sdk 下的源码并产出 qemu.out）。</li>
 </ul>
-<p>说白了，SDK整个文件夹就相当于是整合了芯片的BSP板级支持包、基本外设的驱动代码、工程模板等的，这一部分是属于源码，存在于galaxy_sdk文件夹下，qemu文件夹下含有[.project](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 与 [.cproject](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)两个文件，相当于你用keil新建工程的哪个. Uvprojx文件，它包含了工程元数据(也包含了调用软件模拟调试的启动配置，也就是类似于keil里自动给你选择了软件模拟调试)，实际上就是你导入整个文件夹到nuclei studio这个IDE后，nuclei studio会给你自动链接到并打开当前文件夹的同级文件夹下面的一些的代码。也就是import这一步就是相当于你双击了. Uvprojx打开keil展示了整个项目的代码，并且指定了配置和构建的路径、工具链编译器那些</p>
-<p>你说你复制了一份qemu文件夹并改一个名称还放在原目录？这是没意义的，因为它里面的 [.project](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 与 [.cproject](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)写的内容还是原来的，他会指定或链接到一个相对路径下的源码，那你改个文件夹名称其实还是链接到了同一个文件夹下的代码啊，这是会产生冲突的。</p>
+<p>说白了，SDK整个文件夹就相当于是整合了芯片的BSP板级支持包、基本外设的驱动代码、工程模板等的，这一部分是属于源码，存在于galaxy_sdk文件夹下，qemu文件夹下含有 .project 与 .cproject 两个文件，相当于你用 keil 新建工程时的 Uvprojx 文件。它包含了工程元数据，也包含了调用软件模拟调试的启动配置，类似于 keil 里自动给你选好了软件模拟调试。实际上就是你导入整个文件夹到 Nuclei Studio 这个 IDE 后，它会自动链接并打开当前文件夹同级目录下面的代码，也就是 import 这一步相当于你双击 Uvprojx 打开 keil，展示整个项目的代码，并且指定了配置和构建的路径、工具链编译器等信息。</p>
+<p>你说你复制了一份 qemu 文件夹并改一个名称还放在原目录？这是没意义的，因为它里面的 .project 与 .cproject 写的内容还是原来的，它会指定或链接到一个相对路径下的源码，那你改个文件夹名称其实还是链接到了同一个文件夹下的代码，这会产生冲突。</p>
 <p>总之，把整个SDK文件夹当成一个”工程模板”即可，把模板复制一份，且在Nuclei Studio没有导入工程的情况下去import，然后在此基础上增加和修改代码就行了。</p>
-<p>为什么要在没有导入工程的情况下去import？正常情况下是可以的，因为正常情况你的 [.project](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 与 [.cproject](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)里面的元数据是不一样的，比如用cubemx去新建工程，他也会有这个文件产生，但是你每次新建都是重新根据你的配置去产生的这俩文件。但是现在官方只给了我们这么一个“模板”，每次新建工程都得复制一份模板，当然也包括了 [.project](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 与 [.cproject](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)。而Nuclei Stidio这个IDE的workwpace默认是你一开始安装的时候指定的目录，<strong>workspace 是一个“工作区”容器</strong>，里面可以放多个项目，并不是每个项目一个 workspace，你每次导入的项目都会放在这个容器里，如果你在已经导入了一个项目的情况下再去导入包含同样元数据的项目，要么导入不了，要么提示出错。所以在导入项目前，要把之前的项目移除工作区。除非手动去 修改[.project](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 与 [.cproject](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html)，但是没必要。</p>
-<h1 id="2-因为没有添加头文件路径导致的编译失败："><a href="#2-因为没有添加头文件路径导致的编译失败：" class="headerlink" title="2.因为没有添加头文件路径导致的编译失败："></a>2.因为没有添加头文件路径导致的编译失败：</h1><ol>
+<p>为什么要在没有导入工程的情况下去 import？正常情况下是可以的，因为你的 .project 与 .cproject 里面的元数据并不固定。比如用 CubeMX 去新建工程，它也会生成这两个文件，但每次新建都是根据配置重新生成的。现在官方只给了我们这么一个“模板”，每次新建工程都得复制一份模板，当然也包括 .project 与 .cproject。而 Nuclei Studio 这个 IDE 的 workspace 默认是安装时指定的目录，workspace 是一个“工作区”容器，里面可以放多个项目，并不是每个项目一个 workspace。你每次导入的项目都会放在这个容器里，如果你在已经导入了一个项目的情况下再去导入包含同样元数据的项目，要么导入不了，要么提示出错。所以在导入项目前，要把之前的项目移除工作区。除非手动修改 .project 与 .cproject，但没有必要。</p>
+<h2 id="2-因为没有添加头文件路径导致的编译失败："><a href="#2-因为没有添加头文件路径导致的编译失败：" class="headerlink" title="2. 因为没有添加头文件路径导致的编译失败："></a>2. 因为没有添加头文件路径导致的编译失败：</h2><ol>
 <li>右键工程 → <strong>Properties</strong></li>
 <li><strong>C&#x2F;C++ Build</strong> → <strong>Settings</strong></li>
 <li>选中 <strong>Tool Settings</strong></li>
@@ -90,76 +91,56 @@
 <li>点击右侧 <strong>Add…</strong>，填入路径，例如：</li>
 </ol>
 <p><strong>“${workspace_loc:&#x2F;${ProjName}&#x2F;galaxy_sdk&#x2F;tasks&#x2F;my_printf}”</strong><br><img src="/../images/image-20260606204045331.png" alt="image-20260606204045331"></p>
-<h1 id="3-VeriHealthi-Embedded-SDK的Event系统理解和使用"><a href="#3-VeriHealthi-Embedded-SDK的Event系统理解和使用" class="headerlink" title="3. VeriHealthi Embedded SDK的Event系统理解和使用"></a>3. VeriHealthi Embedded SDK的Event系统理解和使用</h1><p>在了解Event的机制之前，首先简单说明一下这个SDK,SDK的全称是software development Kits，中文意思是软件开发工具包。通常是芯片原厂提供的一套开发工具合集，像嵌入式方向提到的SDK常常就是一套包含了底层底层驱动代码、基本的功能函数代码等，可以大致的类比于一个工程模板，模板里写好了所有的底层代码，用户只需要调用需要使用的底层函数初始化，再在上面去编写业务层即可。值得一提的是可能容易产生混淆的概念API，API是应用编程接口，它的概念其实是一种能连接到远端or本地的一种特定格式的接口，也就是说通过特定的规则去调用这个API能够去访问到API另一端的代码去调用。也就是说SDK常常是已经包含了API的，它当然是给用户提供了某些功能的调用接口的，这就是API了。而API在嵌入式里概念常常是远端的，也就是通过这个接口调用的功能块代码并不在我们本地，而是云端，比如说调用一个TTS(语音合成)的API，这个API是由某些公司如百度云智能TTS提供，我们提供ESP系列的模组可以去联网提供调用API去让云端实现功能再返回我们需要的数据。</p>
+<h2 id="3-VeriHealthi-Embedded-SDK-的-Event-系统理解和使用"><a href="#3-VeriHealthi-Embedded-SDK-的-Event-系统理解和使用" class="headerlink" title="3. VeriHealthi Embedded SDK 的 Event 系统理解和使用"></a>3. VeriHealthi Embedded SDK 的 Event 系统理解和使用</h2><p>在了解Event的机制之前，首先简单说明一下这个SDK,SDK的全称是software development Kits，中文意思是软件开发工具包。通常是芯片原厂提供的一套开发工具合集，像嵌入式方向提到的SDK常常就是一套包含了底层底层驱动代码、基本的功能函数代码等，可以大致的类比于一个工程模板，模板里写好了所有的底层代码，用户只需要调用需要使用的底层函数初始化，再在上面去编写业务层即可。值得一提的是可能容易产生混淆的概念API，API是应用编程接口，它的概念其实是一种能连接到远端or本地的一种特定格式的接口，也就是说通过特定的规则去调用这个API能够去访问到API另一端的代码去调用。也就是说SDK常常是已经包含了API的，它当然是给用户提供了某些功能的调用接口的，这就是API了。而API在嵌入式里概念常常是远端的，也就是通过这个接口调用的功能块代码并不在我们本地，而是云端，比如说调用一个TTS(语音合成)的API，这个API是由某些公司如百度云智能TTS提供，我们提供ESP系列的模组可以去联网提供调用API去让云端实现功能再返回我们需要的数据。</p>
 <p>​    接下来步入正题，根据<strong>VeriHealthi Embedded SDK</strong> 开发手册可知：</p>
-<p>模块功能：提供各种通用型模块的实现，包括 BLE 服务， Event 系统以及内存管理等模块。<br> VPI：各个模块功能向上层提供统一的 VPI 接口用来提供服务。这里的VPI按照我个人的理解，应该是跟API的概念差不多，都是一个接口。</p>
-<p>Event应该是此SDK提供的一个事件的概念，可以用于任务之间通过事件的触发完成一些通信。<br>    <strong>Event</strong>基础框架设计</p>
-<p>l 一个 task 对应一个 manager  </p>
-<p>l Manager 可以注册感兴趣的 event， 一个 manager 可以注册多个 event    </p>
-<p>l Manager 发一个 event，所有注册过该 event 的 manager 都会收到</p>
-<p>l 需要在 task 的 while(1) loop 里调用 vpi_event_listen 来监听其他 manager 发来的 event</p>
-<p>l 使用 vpi_event_notify 接口给其他 manager 发送 event</p>
-<p>说一些我认为比较关键的点：</p>
-<p><strong>1.</strong>   <strong>事件管理器</strong></p>
-<p>事件管理器也就是上述提到的manager，一个任务通常应该对应一个任务管理器，通过vpi_event_new_manager来创建一个新的事件管理器，第一个参数是说明这个管理器的类型，可能是用于说明用来管理哪些类型的事件的。第二个参数就是填这个事件管理器需要对应的回调函数，意思是只要manager收到了注册过的事件被触发的消息，就会调用这个回调函数，函数里我们可去做一些事件的判断和处理，比如今天我就做了一个简单的<strong>判断事件类型和接收的数据类型并进行打印</strong>：</p>
-<p><strong>int sys_manager_handler(EventManager manager, EventId event_id, EventParam param)</strong></p>
-<p><strong>{</strong></p>
-<p>  <strong>&#x2F;&#x2F;这是管理器的回调函数，一旦接收到</strong></p>
-<p>  <strong>if (event_id &#x3D;&#x3D; EVENT_SYS_TEST &amp;&amp; param) {</strong></p>
-<p>​    <strong>uint32_t val &#x3D; *(uint32_t *)param;</strong></p>
-<p>​    <strong>uart_printf(“sys_manager_handler received value 0x%lx\r\n”, (unsigned long)val);</strong></p>
-<p>​    <strong>return EVENT_OK;</strong></p>
-<p>  <strong>}</strong></p>
-<p>  <strong>return EVENT_ERROR;</strong></p>
-<p><strong>}</strong></p>
-<p>更具体的说明具体如下：</p>
+<p>模块功能：提供各种通用型模块的实现，包括 BLE 服务、Event 系统以及内存管理等模块。<br>VPI：各个模块功能向上层提供统一的 VPI 接口用来提供服务。这里的 VPI 按照我个人的理解，应该是跟 API 的概念差不多，都是一个接口。</p>
+<p>Event 是此 SDK 提供的一个事件概念，可以用于任务之间通过事件触发完成通信。</p>
+<h3 id="Event-基础框架设计"><a href="#Event-基础框架设计" class="headerlink" title="Event 基础框架设计"></a>Event 基础框架设计</h3><ul>
+<li>一个 task 对应一个 manager。</li>
+<li>Manager 可以注册感兴趣的 event，一个 manager 可以注册多个 event。</li>
+<li>Manager 发一个 event，所有注册过该 event 的 manager 都会收到。</li>
+<li>需要在 task 的 while(1) loop 里调用 <code>vpi_event_listen</code> 来监听其他 manager 发来的 event。</li>
+<li>使用 <code>vpi_event_notify</code> 接口给其他 manager 发送 event。</li>
+</ul>
+<h3 id="3-1-事件管理器"><a href="#3-1-事件管理器" class="headerlink" title="3.1 事件管理器"></a>3.1 事件管理器</h3><p>事件管理器也就是上述提到的 manager。一个任务通常应该对应一个任务管理器，通过 <code>vpi_event_new_manager</code> 创建新的事件管理器。第一个参数说明这个管理器的类型，第二个参数是对应的回调函数。只要 manager 收到了注册过的事件被触发的消息，就会调用回调函数，然后在函数里做事件判断和处理。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">sys_manager_handler</span><span class="params">(EventManager manager, EventId event_id, EventParam param)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (event_id == EVENT_SYS_TEST &amp;&amp; param) &#123;</span><br><span class="line">    <span class="type">uint32_t</span> val = *(<span class="type">uint32_t</span> *)param;</span><br><span class="line">    uart_printf(<span class="string">&quot;sys_manager_handler received value 0x%lx\r\n&quot;</span>, (<span class="type">unsigned</span> <span class="type">long</span>)val);</span><br><span class="line">    <span class="keyword">return</span> EVENT_OK;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> EVENT_ERROR;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>vpi_event_new_manager(EventManagerId manager_id, EventHandler handler)</code> 的含义可以拆成两部分：</p>
 <ul>
-<li><p>vpi_event_new_manager(EventManagerId     manager_id, EventHandler handler)</p>
-</li>
-<li><ul>
-<li>第一个参数 manager_id：管理器的<strong>身份&#x2F;类型</strong>（例如 EVENT_MGR_CUSTOM、EVENT_MGR_SYS），用来标识“这是哪个模块&#x2F;子系统的管理器”。</li>
-<li>第二个参数 handler：回调函数指针 EventHandler，当该管理器收到事件时调用。</li>
+<li>第一个参数 <code>manager_id</code>：管理器的身份&#x2F;类型，用来标识“这是哪个模块&#x2F;子系统的管理器”。</li>
+<li>第二个参数 <code>handler</code>：回调函数指针，当该管理器收到事件时调用。</li>
+<li>管理器类型不是事件过滤器。</li>
+<li>管理器可以注册任何事件，是否能收到事件只取决于你有没有调用 <code>vpi_event_register(EventId, EventManager)</code>。</li>
 </ul>
-</li>
-<li><p>“管理器类型”不是“事件过滤器”。</p>
-</li>
-<li><ul>
-<li>管理器可以<strong>注册任何事件</strong>，是否能收到事件<strong>只取决于</strong>你有没有调用 vpi_event_register(EventId, EventManager)。</li>
-</ul>
-</li>
-</ul>
-<p><strong>2.</strong>   <strong>事件注册</strong></p>
-<p>一个事件被发送了出去，事件管理器能否被触发，主要就靠这个事件管理器是否注册了这个事件以及是否正在监听事件。所以，一个任务想要接收事件并做出反应，需要做的是：创建事件管理器mannager、注册想要监听的事件、监听。</p>
+<h3 id="3-2-事件注册"><a href="#3-2-事件注册" class="headerlink" title="3.2 事件注册"></a>3.2 事件注册</h3><p>一个事件被发送出去后，事件管理器能否被触发，主要看这个管理器是否注册了该事件以及是否正在监听事件。所以，一个任务想要接收事件并做出反应，需要做的是：创建事件管理器、注册想要监听的事件、监听。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">vpi_event_register</span><span class="params">(EventId event_id, EventManager manager)</span>;</span><br></pre></td></tr></table></figure>
+
 <ul>
-<li>[vpi_event_register](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;f:&#x2F;Software&#x2F;VS Code&#x2F;Microsoft VS Code&#x2F;034f571df5&#x2F;resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-browser&#x2F;workbench&#x2F;workbench.html) 的原型是 int vpi_event_register(EventId event_id, EventManager     manager);</li>
-<li>第一个参数 event_id：事件 ID，类型 EventId。你传的 EVENT_SYS_TEST 表示“系统测试事件”这一类事件。</li>
-<li>第二个参数 manager：事件管理器句柄，类型 EventManager。你传的 pSysManager 表示“哪个管理器要接收这个事件”。</li>
+<li>第一个参数 <code>event_id</code>：事件 ID，类型 <code>EventId</code>。这里的 <code>EVENT_SYS_TEST</code> 表示“系统测试事件”这一类事件。</li>
+<li>第二个参数 <code>manager</code>：事件管理器句柄，类型 <code>EventManager</code>。这里的 <code>pSysManager</code> 表示“哪个管理器要接收这个事件”。</li>
 </ul>
-<p>调用效果：把 EVENT_SYS_TEST 绑定到 pSysManager，以后任何任务调用 vpi_event_notify(EVENT_SYS_TEST, …) 时，事件系统就会把这个事件分发给 pSysManager 对应的回调。</p>
-<p><strong>3.</strong>   <strong>事件事件管理器对应的回调</strong></p>
-<p>事件管理器对应的回调，这个在一开始创建事件管理器的时候就提到了要传入一个回调函数的进去，就是用于这个任务中创建的任务管理器被注册的事件触发后，自动调用的。在回调函数中可以做一些判断，比如触发事件的ID、监听数据的类型。</p>
-<p>附一张event系统的事件通知图：</p>
+<p>调用效果是：把 <code>EVENT_SYS_TEST</code> 绑定到 <code>pSysManager</code>，以后任何任务调用 <code>vpi_event_notify(EVENT_SYS_TEST, ...)</code> 时，事件系统都会把这个事件分发给对应的回调。</p>
+<h3 id="3-3-事件回调"><a href="#3-3-事件回调" class="headerlink" title="3.3 事件回调"></a>3.3 事件回调</h3><p>事件管理器对应的回调函数会在注册事件触发后自动调用。在回调函数里，可以判断事件 ID 和接收的数据类型。</p>
+<p>附一张 event 系统的事件通知图：</p>
 <p><img src="/../images/image-20260606203505886.png" alt="image-20260606203505886"></p>
-<h1 id="4-MCU-SoC上各个软件层级的理解"><a href="#4-MCU-SoC上各个软件层级的理解" class="headerlink" title="4.MCU&#x2F;SoC上各个软件层级的理解"></a>4.MCU&#x2F;SoC上各个软件层级的理解</h1><p> 起因是在查看官方提供的SDK文档的过程中，看到一些在嵌入式领域经常提及到的概念，比如HAL、BSP、SDK、驱动等等，有一些甚至是单独作为一个嵌入式岗位的，比如BSP工程师、SDK工程师、驱动工程师。看到这些我总觉得有些迷糊，理解不够深刻，再结合我现在在汽车电子领域的公司(Bosch)实习，接触到一些AUTOSAR的概念，我觉得HAL的概念和层级和MCAL是有点像的，所以尝试自己去理解和组织了一下语言，并把我的理解发给AI让他给我纠正错误和进行补充，下面补两张在芯原SDK开发手册上的图:</p>
+<h2 id="4-MCU-SoC-上各个软件层级的理解"><a href="#4-MCU-SoC-上各个软件层级的理解" class="headerlink" title="4. MCU&#x2F;SoC 上各个软件层级的理解"></a>4. MCU&#x2F;SoC 上各个软件层级的理解</h2><p> 起因是在查看官方提供的SDK文档的过程中，看到一些在嵌入式领域经常提及到的概念，比如HAL、BSP、SDK、驱动等等，有一些甚至是单独作为一个嵌入式岗位的，比如BSP工程师、SDK工程师、驱动工程师。看到这些我总觉得有些迷糊，理解不够深刻，再结合我现在在汽车电子领域的公司(Bosch)实习，接触到一些AUTOSAR的概念，我觉得HAL的概念和层级和MCAL是有点像的，所以尝试自己去理解和组织了一下语言，并把我的理解发给AI让他给我纠正错误和进行补充，下面补两张在芯原SDK开发手册上的图:</p>
 <p><img src="/../images/image-20260606202713714.png" alt="image-20260606202713714"></p>
 <p> <img src="/../images/image-20260606202700303.png" alt="image-20260606202700303"></p>
-<p><span style="font-size:1.4em;"><strong>4.1我的理解:</strong></span></p>
-<p>这么说HAL是硬件抽象层，就是直接和硬件寄存器交互的，负责抽象出接口函数，由HAL库写好的函数去操作对应的寄存器，目前我了解到的HAL是由ST公司推出的？可能每个芯片原厂公司都会推出自己的HAL，毕竟HAL的概念就是硬件抽象层，是为了芯片原厂本身的管理和推广以及使用芯片用户的使用感受而产生的。哪个公司退出自己的HAL都是适配于公司内的芯片，不适合其他芯片，因为只有自己公司的芯片手册，根据公司内不同的芯片的寄存器做适配，其实也就是一堆的条件宏，同一个公司的芯片，又有一些统一的寄存器名称和配置，然后不同系列可能会多一些特殊的寄存器，HAL则是公司自行去根据这些去做适配，所以HAL是同一套东西做了各自芯片的冗余，不同芯片都用这一套，只不过会通过条件宏和头文件等方式选择性适配使用的芯片。按我的理解，在汽车电子行业用到的AUTUSAR里，有一个概念叫做MCAL层，也就是Miro Controller Abstraction Layer，其实跟这个HAL的概念很类似，但是MCAL是能适配各种芯片厂商的芯片的，我的理解就是MCAL相当于各家芯片厂商的HAL的集成。BSP则是为了适应不同板子的一个软件层级，同一个公司不同系列的芯片引脚数不一样，具体的资源也不一样，而BSP则是针对某个系列的板子而适配的板级支持包，一般不同系列的板级支持包是分开的，这个BSP层投射出来的效果就是板级层面的，例如由BSP层具体硬件资源的对应，如某一系列的芯片A1-A6引脚可以配置成ADC进行采集，还有别的吗，我想不到了你补充一下。以上两层多少还是和硬件交互比较深，至于驱动层则是在此之上更接近纯粹的软件层面，只需要拿到前两层抽象出来的接口去配置某些外设的具体功能，这些叫控制器驱动，之所以叫驱动就是因为在用户的视角和体感上，是自己使用或修改这个驱动层去完成具体功能的配置，实则是人和驱动层交互，驱动层下面跟BSP、HAL交互最终配置到芯片寄存器。而设备驱动则是稍微比控制器驱动高半个层级的概念，控制器驱动在用户视角是想要设置好芯片的某项内置功能，而设备驱动则是用户想要用这个芯片控制、接收某个连接到芯片或板子的新设备，这就涉及到两件事了，第一依旧要对芯片芯片进行配置以此达到引出一个芯片端对接入设备的交互接口的目的。第二，在此基础上要根据接入设备的特性和原理(比如通信协议、设备通信可接收的速率等)写一个类似”接入设备的通信层”，以此输出一个接口提供到应用层，可由应用层调用这个接口完成业务上的逻辑代码。那SDK就是HAL、BSP、驱动、简单的App层demo构成的整个包吗，也就是所谓的软件开发工具包。 以上就是我的理解，哪里不对或者缺失的，请你补充。</p>
-<p><strong><span style="font-size:1.4em;">4.2 AI给出的解释和部分纠错：</span></strong></p>
-<h1 id="整体结论：你的理解85-以上完全正确，框架逻辑、分层定义、控制器-设备驱动划分思路完全贴合工业、车载、STM32工程规范；仅存在1处核心概念误区（MCAL）-2处细节小偏差，剩下我针对性纠错、补齐缺失知识点，按HAL→MCAL→BSP→驱动四层拆分说明。"><a href="#整体结论：你的理解85-以上完全正确，框架逻辑、分层定义、控制器-设备驱动划分思路完全贴合工业、车载、STM32工程规范；仅存在1处核心概念误区（MCAL）-2处细节小偏差，剩下我针对性纠错、补齐缺失知识点，按HAL→MCAL→BSP→驱动四层拆分说明。" class="headerlink" title="整体结论：你的理解85%以上完全正确，框架逻辑、分层定义、控制器&#x2F;设备驱动划分思路完全贴合工业、车载、STM32工程规范；仅存在1处核心概念误区（MCAL）+2处细节小偏差，剩下我针对性纠错、补齐缺失知识点，按HAL→MCAL→BSP→驱动四层拆分说明。"></a><span style="font-size:0.5em;">整体结论：你的理解<strong>85%以上完全正确</strong>，框架逻辑、分层定义、控制器&#x2F;设备驱动划分思路完全贴合工业、车载、STM32工程规范；仅存在<strong>1处核心概念误区（MCAL）+2处细节小偏差</strong>，剩下我针对性纠错、补齐缺失知识点，按HAL→MCAL→BSP→驱动四层拆分说明。</span></h1><h2 id="一、HAL层：你的理解基本全对，补充2处细节-修正1个小偏差"><a href="#一、HAL层：你的理解基本全对，补充2处细节-修正1个小偏差" class="headerlink" title="一、HAL层：你的理解基本全对，补充2处细节+修正1个小偏差"></a><span style="font-size:0.6em;">一、HAL层：你的理解基本全对，补充2处细节+修正1个小偏差</span></h2><p><strong>正确部分（全部认同）</strong></p>
+<h3 id="4-1-我的理解"><a href="#4-1-我的理解" class="headerlink" title="4.1 我的理解"></a>4.1 我的理解</h3><p>这么说HAL是硬件抽象层，就是直接和硬件寄存器交互的，负责抽象出接口函数，由HAL库写好的函数去操作对应的寄存器，目前我了解到的HAL是由ST公司推出的？可能每个芯片原厂公司都会推出自己的HAL，毕竟HAL的概念就是硬件抽象层，是为了芯片原厂本身的管理和推广以及使用芯片用户的使用感受而产生的。哪个公司退出自己的HAL都是适配于公司内的芯片，不适合其他芯片，因为只有自己公司的芯片手册，根据公司内不同的芯片的寄存器做适配，其实也就是一堆的条件宏，同一个公司的芯片，又有一些统一的寄存器名称和配置，然后不同系列可能会多一些特殊的寄存器，HAL则是公司自行去根据这些去做适配，所以HAL是同一套东西做了各自芯片的冗余，不同芯片都用这一套，只不过会通过条件宏和头文件等方式选择性适配使用的芯片。按我的理解，在汽车电子行业用到的AUTUSAR里，有一个概念叫做MCAL层，也就是Miro Controller Abstraction Layer，其实跟这个HAL的概念很类似，但是MCAL是能适配各种芯片厂商的芯片的，我的理解就是MCAL相当于各家芯片厂商的HAL的集成。BSP则是为了适应不同板子的一个软件层级，同一个公司不同系列的芯片引脚数不一样，具体的资源也不一样，而BSP则是针对某个系列的板子而适配的板级支持包，一般不同系列的板级支持包是分开的，这个BSP层投射出来的效果就是板级层面的，例如由BSP层具体硬件资源的对应，如某一系列的芯片A1-A6引脚可以配置成ADC进行采集，还有别的吗，我想不到了你补充一下。以上两层多少还是和硬件交互比较深，至于驱动层则是在此之上更接近纯粹的软件层面，只需要拿到前两层抽象出来的接口去配置某些外设的具体功能，这些叫控制器驱动，之所以叫驱动就是因为在用户的视角和体感上，是自己使用或修改这个驱动层去完成具体功能的配置，实则是人和驱动层交互，驱动层下面跟BSP、HAL交互最终配置到芯片寄存器。而设备驱动则是稍微比控制器驱动高半个层级的概念，控制器驱动在用户视角是想要设置好芯片的某项内置功能，而设备驱动则是用户想要用这个芯片控制、接收某个连接到芯片或板子的新设备，这就涉及到两件事了，第一依旧要对芯片芯片进行配置以此达到引出一个芯片端对接入设备的交互接口的目的。第二，在此基础上要根据接入设备的特性和原理(比如通信协议、设备通信可接收的速率等)写一个类似”接入设备的通信层”，以此输出一个接口提供到应用层，可由应用层调用这个接口完成业务上的逻辑代码。那SDK就是HAL、BSP、驱动、简单的App层demo构成的整个包吗，也就是所谓的软件开发工具包。 以上就是我的理解，哪里不对或者缺失的，请你补充。</p>
+<h3 id="4-2-AI-给出的解释和部分纠错"><a href="#4-2-AI-给出的解释和部分纠错" class="headerlink" title="4.2 AI 给出的解释和部分纠错"></a>4.2 AI 给出的解释和部分纠错</h3><h4 id="整体结论"><a href="#整体结论" class="headerlink" title="整体结论"></a>整体结论</h4><p>你的理解 <strong>85%以上完全正确</strong>，框架逻辑、分层定义、控制器&#x2F;设备驱动划分思路完全贴合工业、车载、STM32 工程规范；仅存在 <strong>1 处核心概念误区（MCAL）+2 处细节小偏差</strong>，剩下我针对性纠错、补齐缺失知识点，按 HAL→MCAL→BSP→驱动 四层拆分说明。</p>
+<h4 id="4-2-1-HAL-层：你的理解基本全对，补充-2-处细节-修正-1-个小偏差"><a href="#4-2-1-HAL-层：你的理解基本全对，补充-2-处细节-修正-1-个小偏差" class="headerlink" title="4.2.1 HAL 层：你的理解基本全对，补充 2 处细节 + 修正 1 个小偏差"></a>4.2.1 HAL 层：你的理解基本全对，补充 2 处细节 + 修正 1 个小偏差</h4><p><strong>正确部分</strong></p>
 <ol>
 <li>各芯片原厂自研专属HAL，直操作寄存器、封装原子级硬件API，<strong>原厂HAL只适配自家SOC</strong>，跨厂不能通用；</li>
 <li>ST HAL、NXP MCUX、瑞萨FSP均是原厂基于自家芯片寄存器手册开发，同品牌多型号靠头文件+条件宏做代码裁剪复用，一套源码适配全系是主流设计思路；</li>
 <li>HAL只关心<strong>芯片内核&#x2F;片内外设寄存器定义</strong>，完全不关心PCB布线、引脚外接什么器件，和板级无关。</li>
 </ol>
-<p><strong>修正+补充缺失内容</strong></p>
+<p><strong>修正 + 补充缺失内容</strong></p>
 <ol>
 <li><strong>小偏差：不是所有原厂HAL都靠「单套源码+宏冗余」实现全系列适配</strong><br>ST HAL是单源码+芯片选型头文件宏裁剪，但TI、Microchip部分MCU HAL采用<strong>分系列独立源码</strong>，同品牌不同产品线分开维护，不用一套源码堆宏；</li>
 <li><strong>关键遗漏：ARM推出跨厂商标准抽象：CMSIS</strong><br>所有Cortex-M内核芯片（ST&#x2F;NXP&#x2F;瑞萨）原厂HAL<strong>强制兼容CMSIS规范</strong>，ARM统一规定SPI&#x2F;UART&#x2F;ADC标准函数原型；CMSIS是脱离芯片厂商的通用硬件抽象，相当于<strong>行业通用版迷你HAL</strong>，用来统一不同原厂HAL的上层调用接口，是裸机跨芯片移植的基础，你没有提到这个行业通用规范。</li>
 </ol>
-<p><strong><span style="font-size:1.1em;">二、MCAL(AUTOSAR)：【你最大核心误区：MCAL≠各家HAL的集成打包】</span></strong></p>
-<blockquote>
-<p>错误原文：MCAL是各家厂商HAL集成、能适配多种芯片❌，这条必须重点纠正，是车载AUTOSAR最容易踩的坑<br><strong>正确MCAL逻辑</strong></p>
+<h4 id="4-2-2-MCAL-AUTOSAR-：【你最大核心误区：MCAL≠各家-HAL-的集成打包】"><a href="#4-2-2-MCAL-AUTOSAR-：【你最大核心误区：MCAL≠各家-HAL-的集成打包】" class="headerlink" title="4.2.2 MCAL(AUTOSAR)：【你最大核心误区：MCAL≠各家 HAL 的集成打包】"></a>4.2.2 MCAL(AUTOSAR)：【你最大核心误区：MCAL≠各家 HAL 的集成打包】</h4><blockquote>
+<p>错误原文：MCAL是各家厂商HAL集成、能适配多种芯片❌，这条必须重点纠正，是车载AUTOSAR最容易踩的坑<br><strong>正确 MCAL 逻辑</strong></p>
 </blockquote>
 <ol>
 <li><strong>MCAL是【接口标准规范】，不是HAL合集</strong><br>AUTOSAR联盟统一制定MCAL上层API标准（比如<code>Dio_WriteChannel()</code>、<code>Spi_Transmit()</code>、<code>Adc_GetValue()</code>全全球统一函数名、入参）；<br><strong>芯片厂商（英飞凌&#x2F;瑞萨&#x2F;NXP）基于自家原厂HAL，去实现这套标准化API</strong>。<br>分层链路：<br><code>AUTOSAR上层BSW（COM/OS/ECU配置）→ MCAL标准API(统一规范) → 厂商实现层(调用自家HAL) → SOC寄存器</code></li>
@@ -172,8 +153,7 @@
 <li>MCAL&#x3D;安卓系统统一硬件接口标准；</li>
 <li>厂商MCAL实现&#x3D;华为&#x2F;小米按照安卓标准封装自家底层驱动，安卓APP不用改就能在不同手机运行。</li>
 </ul>
-<p><strong><span style="font-size:1.1em;">三、BSP层：你的理解方向正确，仅只列举了引脚→ADC映射，大幅补充BSP全场景工作内容（工业&#x2F;车载&#x2F;Linux通用）</span></strong></p>
-<p>你原文：BSP只做引脚资源映射（A1~A6配置ADC），除此之外BSP完整职责分6大类：</p>
+<h4 id="4-2-3-BSP-层：你的理解方向正确，仅只列举了引脚→ADC-映射，大幅补充-BSP-全场景工作内容（工业-车载-Linux-通用）"><a href="#4-2-3-BSP-层：你的理解方向正确，仅只列举了引脚→ADC-映射，大幅补充-BSP-全场景工作内容（工业-车载-Linux-通用）" class="headerlink" title="4.2.3 BSP 层：你的理解方向正确，仅只列举了引脚→ADC 映射，大幅补充 BSP 全场景工作内容（工业&#x2F;车载&#x2F;Linux 通用）"></a>4.2.3 BSP 层：你的理解方向正确，仅只列举了引脚→ADC 映射，大幅补充 BSP 全场景工作内容（工业&#x2F;车载&#x2F;Linux 通用）</h4><p>你原文：BSP只做引脚资源映射（A1~A6配置ADC），除此之外BSP完整职责分6大类：</p>
 <ol>
 <li><strong>时钟域配置</strong>：板载外部晶振（8M&#x2F;24M&#x2F;40M PCB硬件决定）、PLL倍频系数、各外设时钟分频；同芯片换板子晶振不一样，BSP必须修改，HAL只提供时钟配置函数，不写死晶振参数；</li>
 <li><strong>电源域配置</strong>：板上外设供电引脚、IO域电源开关、外挂芯片（LCD、传感器）上电时序，由PCB硬件设计决定；</li>
@@ -187,8 +167,7 @@
 <li>Linux内核中<strong>设备树DTS &#x3D; Linux标准化BSP</strong>，裸机是bsp_xxx.c文件，AUTOSAR中ECUC配置工具生成的资源配置 &#x3D; AUTOSAR版BSP；</li>
 <li>现代规范BSP<strong>严禁直接操作寄存器</strong>，所有初始化全部调用HAL接口；老式裸机直接寄存器写BSP是历史遗留不规范写法。</li>
 </ol>
-<p><span style="font-size:1.1em;"><strong>四、驱动分层（控制器驱动&#x2F;设备驱动）：你的理解100%精准，仅补充边界特例</strong></span></p>
-<p><strong>你的核心观点全部正确：</strong></p>
+<h4 id="4-2-4-驱动分层（控制器驱动-设备驱动）：你的理解-100-精准，仅补充边界特例"><a href="#4-2-4-驱动分层（控制器驱动-设备驱动）：你的理解-100-精准，仅补充边界特例" class="headerlink" title="4.2.4 驱动分层（控制器驱动&#x2F;设备驱动）：你的理解 100% 精准，仅补充边界特例"></a>4.2.4 驱动分层（控制器驱动&#x2F;设备驱动）：你的理解 100% 精准，仅补充边界特例</h4><p><strong>你的核心观点全部正确：</strong></p>
 <ol>
 <li><strong>控制器驱动</strong>：面向芯片内置控制器（UART&#x2F;SPI&#x2F;CAN&#x2F;ADC硬件控制器），基于HAL+BSP封装零散原子API，实现多字节收发、环形缓冲、DMA中断等完整控制器功能，面向芯片内置硬件；</li>
 <li><strong>设备驱动</strong>：依托控制器驱动打开硬件总线接口，再按照外接器件通信协议（W25Q指令、LCD8080时序、GPS NMEA协议）封装外设操作接口，对接板载外挂器件，向上暴露应用API。</li>
@@ -206,16 +185,13 @@
 <ol start="3">
 <li>Linux分层对应：platform_driver&#x3D;片上控制器驱动，spi&#x2F;i2c设备驱动&#x3D;外挂器件驱动。</li>
 </ol>
-<p><strong><span style="font-size:1.1em;">五、补充你整套逻辑缺失的2个宏观知识点</span></strong></p>
-<p><strong>1. 分层设计的终极目的（你没总结）</strong></p>
+<h4 id="4-2-5-补充你整套逻辑缺失的-2-个宏观知识点"><a href="#4-2-5-补充你整套逻辑缺失的-2-个宏观知识点" class="headerlink" title="4.2.5 补充你整套逻辑缺失的 2 个宏观知识点"></a>4.2.5 补充你整套逻辑缺失的 2 个宏观知识点</h4><p><strong>1. 分层设计的终极目的（你没总结）</strong></p>
 <p>HAL屏蔽芯片寄存器差异、BSP屏蔽PCB硬件差异、驱动屏蔽器件协议差异；<strong>分层隔离后，上层应用完全脱离底层硬件细节，硬件改版不动业务代码</strong>。</p>
 <p><strong>2. 特殊无HAL场景</strong></p>
 <p>老旧8位MCU(51&#x2F;AVR)无原厂HAL库，没有抽象层，BSP和驱动直接裸写寄存器，是无分层特例。</p>
-<p><strong><span style="font-size:1.1em;">六、精简层级汇总（对齐你的理解）</span></strong></p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">硬件寄存器 ← 原厂HAL(MCAL底层实现)【芯片级抽象】</span><br><span class="line">       ↓</span><br><span class="line">BSP【板级PCB资源配置：引脚/时钟/片选】</span><br><span class="line">       ↓</span><br><span class="line">控制器驱动【片上UART/SPI/CAN控制器功能封装】</span><br><span class="line">       ↓</span><br><span class="line">设备驱动【外挂器件协议封装：Flash/LCD/GPS】</span><br><span class="line">       ↓</span><br><span class="line">应用层APP【业务逻辑】</span><br></pre></td></tr></table></figure>
+<h4 id="4-2-6-精简层级汇总（对齐你的理解）"><a href="#4-2-6-精简层级汇总（对齐你的理解）" class="headerlink" title="4.2.6 精简层级汇总（对齐你的理解）"></a>4.2.6 精简层级汇总（对齐你的理解）</h4><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">硬件寄存器 ← 原厂HAL(MCAL底层实现)【芯片级抽象】</span><br><span class="line">       ↓</span><br><span class="line">BSP【板级PCB资源配置：引脚/时钟/片选】</span><br><span class="line">       ↓</span><br><span class="line">控制器驱动【片上UART/SPI/CAN控制器功能封装】</span><br><span class="line">       ↓</span><br><span class="line">设备驱动【外挂器件协议封装：Flash/LCD/GPS】</span><br><span class="line">       ↓</span><br><span class="line">应用层APP【业务逻辑】</span><br></pre></td></tr></table></figure>
 <p>AUTOSAR等效替换：MCAL标准接口&#x3D;通用HAL规范，ECUC配置&#x3D;BSP，CDD驱动&#x3D;设备驱动。</p>
-<p><strong><span style="font-size:1.1em;">七、SDK说明</span></strong></p>
-<p><strong>SDK &#x3D; 整套芯片开发软件包 ≠ 只包含 HAL+BSP + 驱动 + Demo</strong>，HAL&#x2F;BSP&#x2F; 板级驱动 &#x2F; 示例工程是 SDK<strong>核心主体</strong>，SDK 还附带大量配套组件、工具、中间件。</p>
+<h4 id="4-2-7-SDK-说明"><a href="#4-2-7-SDK-说明" class="headerlink" title="4.2.7 SDK 说明"></a>4.2.7 SDK 说明</h4><p><strong>SDK &#x3D; 整套芯片开发软件包 ≠ 只包含 HAL+BSP + 驱动 + Demo</strong>，HAL&#x2F;BSP&#x2F; 板级驱动 &#x2F; 示例工程是 SDK<strong>核心主体</strong>，SDK 还附带大量配套组件、工具、中间件。</p>
 <p><strong>一、标准原厂 MCU SDK 完整组成（以 STM32CubeSDK、NXP MCUXpresso SDK、瑞萨 FSP 为例）</strong></p>
 <p><strong>1. 底层硬件层（你提到的部分）</strong></p>
 <ol>
