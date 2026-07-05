@@ -441,6 +441,57 @@ body.dark-mode .comment-avatar { background: #2a2a2a; border-color: #444; }
   .post-title { font-size: 1.5rem; }
   .post-meta { flex-wrap: wrap; gap: 8px; }
 
+    /* 项目文章页在手机上改成更紧凑的单列卡片布局 */
+    .project-grid {
+        display: block;
+    }
+    .project-card {
+        margin-bottom: 18px;
+        padding: 18px 16px;
+        border-radius: 14px;
+        background: var(--card-bg);
+        box-shadow: 0 4px 14px var(--shadow-color);
+    }
+    .project-header {
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+    .project-icon {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        font-size: 1rem;
+    }
+    .project-title {
+        font-size: 1.05rem;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+    .project-body p {
+        font-size: 0.92rem;
+        line-height: 1.65;
+        margin-bottom: 14px;
+    }
+    .project-tags {
+        justify-content: flex-start;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    .project-tags span {
+        font-size: 0.78rem;
+        padding: 4px 10px;
+    }
+    .project-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .btn-download, .btn-github {
+        width: 100%;
+        padding: 11px 12px;
+        font-size: 0.92rem;
+    }
+
   /* 三个入口保持横排并缩小 */
   .quick-links { 
     grid-template-columns: repeat(3, minmax(0, 1fr)); 

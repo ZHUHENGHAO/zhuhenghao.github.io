@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            chtml: {
+                linebreaks: {
+                    automatic: true,
+                    width: 'container'
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">编译构建链路的详细理解（内存架构与 LD 文件篇）</h1>
+    
+    
+    <div class="post-meta">
+        <span>写于：2026-07-06</span>
+    </div>
+    
+    <div class="post-body">
+        <h1 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h1><p>写在前面:前面的一篇文章<strong>“编译构建链路的详细理解”</strong>从顶层的宏观概念上阐述了一个项目应该怎么样通过cmake、ninja、编译链接器等工具链进行管理，按照顺序发挥它们各自的作用从而完成项目的编译输出二进制固件。简单回顾一下：1.先采用声明式语法（<code>CMakeLists.txt</code>）描述”目标（Target）及其依赖关系”，cmake读取camkelists.txt文件生成与平台对应的底层构建文件（比如 Makefile，但本项目为 <code>build.ninja</code>)。2.Ninja 基于 CMake 生成的build.ninja(编译规则文件)，相当于手写的makefile文件，进行高并发调度，所有无依赖关系的编译任务可同时并行执行，大幅缩短增量编译时间。3.第二步中编译器将 .c 源码编译为 .o 目标文件。接下来就是链接器（elxr）负责将全部 .o 文件及静态库按链接脚本分配的地址整合为最终固件，并输出 .out（调试用 ELF 格式）、.map（地址映射表）和 .s19（烧录用格式）。</p>
+<p>本篇博客将以Tricore架构的英飞凌TC397XP为例，从芯片本身的**内存架构(RAM&#x2F;ROM)**角度，着重分析以上提到的第三步，链接器链接的底层原理和概念，为了引入，还是先把编译链接的概念前置：</p>
+<h2 id="1-编译链接的流程概念前置"><a href="#1-编译链接的流程概念前置" class="headerlink" title="1. 编译链接的流程概念前置"></a>1. 编译链接的流程概念前置</h2><p>链接器以带有符号信息和段信息的.o文件作为输入，并生成一个 ELF 文件作为输出。在这个过程中，ld文件作用是：链接多个目标文件，以及如何在内存（ROM&#x2F;RAM）上分配段。对于 Greenhills (GHS) 编译器，这个文件被称为 LD 文件（链接指令文件）。</p>
+<p><img src="/../images/image-20260706005138164.png" alt="image-20260706005138164"></p>
+<h2 id="2-TC397-芯片的内存分布架构"><a href="#2-TC397-芯片的内存分布架构" class="headerlink" title="2. TC397 芯片的内存分布架构"></a>2. TC397 芯片的内存分布架构</h2><p>在写ld文档之前，首先应该查阅芯片手册，对所用芯片的内存架构进行理解，才能理清楚为什么ld文件需要如此划分，通过学习内存的架构，也能更好更深入的将<strong>MCU在运行时的取数据、取指令等抽象概念进行实体化映射</strong>。TC397是一个多核的MCU，这是我第一次接触多核的MCU，从这张图中可以很清晰的看出，CPU和总线、Flash、RAM的关系。在此之前，我相信很多用过STM32的同学对于芯片内部的结构还处于一个比较模糊的概念，只知道他能跑代码、存数据、有RAM有Flash。那么实际上MCU烧录固件以后，到底是怎么运行的呢？为什么它能够读取代码对应的指令进行操作？为什么变量可以一直变且能被CPU获取？</p>
+<p>如果不去细究，可能就永远停留在写简单的业务逻辑代码这个层面了，这对于完成复杂大型项目的调试，是极度不利的。一旦写的业务逻辑代码出现不应该出现的现象，只会麻木的随便改变量类型、改数组大小？那跟瞎子摸象没有区别。而如果能够知悉一些底层的原理，便可以去深究其<strong>“业务bug”发生的底层原因！</strong></p>
+<p>简单的来说，一块略微复杂的MCU的内存，分为CPU内部RAM、通过总线挂载的私有RAM、挂载在总线的公共RAM。区别主要体现在访问的速度不一样、访问的映射地址不一样、访问的权限不一样。如果总线某一时刻被其中一个CPU抢占着在访问一块RAM，那么其他CPU想通过这个总线去访问这个RAM就必须等上一个访问结束。</p>
+<p>一般MCU都是哈弗架构的，也就是指令和数据是分开寻址的。于是在Tricore架构中，RAM被分为两类，一类是存放指令的，一类是存放数据的。刚刚有提到，CPU内部也有各自私有的RAM，在这张图没有体现出来，实际上就是每个CPU内部分为DSPR和PSPR两类RAM，就是我提到的<strong>存放指令</strong>的和<strong>存放数据</strong>的RAM。对于下图中关于DMU、DLMU、LMU等概念，下面给出其简要的概念解释，通过我以上的概括，玩过MCU的同学应该能很快理解其含义和作用。</p>
+<p><img src="/../images/image-20260706005203380.png" alt="image-20260706005203380"></p>
+<p><strong>核心总线架构：</strong>分域三层 SRI 互连整个系统以 3 条 共享资源互连总线（Shared Resource Interconnect, SRI） 为核心主干，通过 S2S 总线桥连接，实现 “域内低延迟 + 跨域可互通” 的隔离式设计Pflash也是挂载在SRI 总线上的外设，内核的 PMI 总线不能直接连 Flash，必须通过 PFI 桥接到 SRI 总线上才能访问。</p>
+<ol>
+<li>SRI0（蓝色域）：主计算域总线，挂载 CPU0~CPU3 共 4 个内核，是芯片核心计算集群的主干，承载实时控制、算法运算等核心负载。</li>
+<li>SRI1（紫色域）：通信 &#x2F; 扩展域总线，挂载 CPU4~CPU5 共 2 个内核，专门对接高速外设、网络通信类模块，与主计算域物理隔离。</li>
+<li>SRI2（绿色域）：全局存储 &#x2F; 外设扩展总线，分左右两段，分别通过桥接单元对接 SRI0 和 SRI1，承载大容量存储、DMA 等全局共享资源。</li>
+<li>S2S 总线桥（S2S0~S2S4）：SRI-to-SRI 总线转换桥，负责不同总线域之间的地址映射、数据转发与仲裁，既保证域内访问低延迟，又支持跨域资源共享。</li>
+<li>DLMU 0~5（Data Local Memory Unit）：每个 CPU 对应一个私有本地数据存储单元，属于紧耦合内存（TCM），CPU 可单周期超低延迟访问自有 DLMU，用于存放核心私有数据、高实时性变量；其他 CPU 也可通过 SRI 总线远程访问，但延迟会显著提升。</li>
+<li>PFI 0~5（Program Fetch Interface）：每个 CPU 对应的程序取指专用接口，负责指令读取。CPU 取指优先从本地存储获取，也可通过 SRI 总线访问共享内存、外部 Flash 中的程序代码，图中PFx fetch即为取指数据流向。</li>
+<li>DMU（Data Memory Unit）：全局数据存储管理单元，承接 CPU 的本地数据取数路径，是 CPU 访问全局存储（如 EMEM）的统一入口。</li>
+<li>LMU0 &#x2F; LMU1 &#x2F; LMU2（Local Shared Memory Unit）：域内共享本地内存，挂载在对应 SRI 总线上，同域所有 CPU 均可访问，是多核间通信、共享数据缓冲、全局变量存储的核心载体。</li>
+<li>EMEM（Emulation Memory）：仿真 &#x2F; 扩展内存，是芯片上容量最大的片上 SRAM 资源，挂载在 SRI2 总线；既支持调试仿真使用，也可作为通用大容量内存存放代码、数据。</li>
+<li>DMA（Direct Memory Access）：直接存储器访问控制器，跨 SRI0 与 SRI2 双总线域，可在内存、外设之间自主完成高速数据搬运，无需 CPU 介入，大幅释放内核算力。</li>
+<li>SFI（Serial Flash Interface）：串行 Flash 接口，分为 F2S（Flash to System）和 S2F（System to Flash）两个通道，分别挂载在 SRI0 和 SRI2，用于访问片外 QSPI Flash（存放程序镜像、参数数据等）。</li>
+<li>DAM0 &#x2F; DAM1：总线访问仲裁 &#x2F; 调试访问模块，分别挂载在 SRI0 和 SRI1 域，负责总线访问权限管理、仲裁，或是调试系统对总线资源的访问入口。</li>
+<li>EBU（External Bus Unit）：外部并行总线单元，支持扩展外部 SRAM、NOR Flash 等并行存储器，挂载在 SRI1 域。</li>
+<li>HSSL 0（High Speed Serial Link）：高速串行链路接口，用于多芯片之间的点对点高速通信，常见于汽车域控制器的多芯片互联。</li>
+<li>GETH（Gigabit Ethernet）：千兆以太网控制器，提供车载以太网通信能力，挂载在 SRI1 域，由通信域内核专属管理。</li>
+</ol>
+<h2 id="3-与单核-STM32-的-ld-对比"><a href="#3-与单核-STM32-的-ld-对比" class="headerlink" title="3. 与单核 STM32 的 ld 对比"></a>3. 与单核 STM32 的 ld 对比</h2><p><strong>链接期分配的物理地址，就已经确定了运行时的访问路径。</strong></p>
+<p>TriCore 架构的硬件总线译码是硬布线的：</p>
+<p>•只要地址以 0xC 开头，CPU 发起取指就走内部 PMI 专用总线</p>
+<p>•只要地址以 0xD 开头，CPU 发起数据访问就走内部 DMI 专用总线</p>
+<table>
+<thead>
+<tr>
+<th>对比项</th>
+<th>TC397XP（GHS）</th>
+<th>STM32F103（GNU）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>链接脚本语法</td>
+<td>GHS .ld</td>
+<td>GNU .ld</td>
+</tr>
+<tr>
+<td>内存架构</td>
+<td>6  核，每核独立 DSPR&#x2F;PSPR + 共享LMU</td>
+<td>单核，统一 Flash + RAM</td>
+</tr>
+<tr>
+<td>启动入口</td>
+<td>StartupEntry（GHS 指定）</td>
+<td>Reset_Handler</td>
+</tr>
+<tr>
+<td>关键段</td>
+<td>.text、.data、.bss + AUTOSAR 内存段宏</td>
+<td>标准 .text、.data、.bss</td>
+</tr>
+</tbody></table>
+<p>1.TC397 的 TriCore 是哈佛架构(指令和数据是分开寻址的)：每个内核有两条完全独立的内部总线 </p>
+<p>•<strong>PMI 总线（程序存储接口）：只负责取指令，物理对接 PSPR</strong></p>
+<p><strong>•DMI 总线（数据存储接口）：只负责读写数据，物理对接 DSPR</strong></p>
+<p>•通过特定的总线访问内存有<strong>单周期</strong>的优势</p>
+<p>2.Cortex-M 内核虽然是哈佛总线设计，但同一块通用 SRAM 是同时挂载在两条总线上的。</p>
+<p>当内核在同一个时钟周期，同时发起「取指令」和「读 &#x2F; 写数据」两个操作时，就会争抢同一块 SRAM 的访问权，产生总线冲突，必须插入 1 个等待周期。</p>
+<p><img src="/../images/image-20260706012429911.png" alt="image-20260706012429911"></p>
+<h2 id="4-VCUPLUS-项目的-ld-分析"><a href="#4-VCUPLUS-项目的-ld-分析" class="headerlink" title="4. VCUPLUS 项目的 ld 分析"></a>4. VCUPLUS 项目的 ld 分析</h2><p>根据芯片手册，每个核的私有RAM(DSPR和PSPR)也能通过映射的地址被其他核访问。但是根据上一节提到的，CPU访问自己核的RAM应该是通过0xC和0xD开头的地址进行寻址的，但是在VCUPLUS项目的ld中， ld 用全局唯一地址（0x70000000 &#x3D; Core0 DSPR，0x10000000 &#x3D; Core5 DSPR）。这是因为<strong>每个地址只对应一个物理位置</strong>，链接器能正确分配。<strong>运行时</strong> OS 初始化时，通过配置 PMA 寄存器，让每个核可以用本地地址 0xD0000000 访问自己的 DSPR。这是 OS 启动代码做的事，不是链接脚本的事。       </p>
+<p><img src="/../images/image-20260706012932813.png" alt="image-20260706012932813">         </p>
+<p>芯片手册的各个核访问地址</p>
+<p><img src="/../images/image-20260706012948361.png" alt="image-20260706012948361">                </p>
+<p>项目中ld文件各个核DSPR的访问地址</p>
+<h3 id="5-1-ld-文件的编写逻辑-内存划分"><a href="#5-1-ld-文件的编写逻辑-内存划分" class="headerlink" title="5.1 ld 文件的编写逻辑 - 内存划分"></a>5.1 ld 文件的编写逻辑 - 内存划分</h3><p>在本项目的 ld 文件里，根据芯片本身的硬件地址分布以及人为的功能划分，在 MEMORY 里进行了大量的区域划分，这里以 APP REGIONS 为例，区域整体落在Flash（0x8 地址段）范围内，起始地址为 0x80114000，分别包含了<strong>应用头部信息区</strong>、<strong>主代码常量区</strong>、<strong>UAES 独立存储分区</strong>、<strong>尾部安全校验区</strong>等</p>
+<p><strong>整个MEMORY</strong>的总体作用就是区域划分与命名，格式为：<strong>区域名</strong>: ORIGIN &#x3D; <strong>起始地址</strong>, LENGTH &#x3D; <strong>长度</strong></p>
+<p>为后续的<strong>SECTIONS</strong>把具体的各个段放入指定区域做好前置准备。</p>
+<p><img src="/../images/image-20260706013445420.png" alt="image-20260706013445420"></p>
+<p>芯片手册中Pflash的地址划分图</p>
+<p><img src="/../images/image-20260706013528989.png" alt="image-20260706013528989"></p>
+<p>项目ld文件中 APP 区的Pflash划分</p>
+<h3 id="5-2-ld-文件的编写逻辑-段-符号映射"><a href="#5-2-ld-文件的编写逻辑-段-符号映射" class="headerlink" title="5.2 ld 文件的编写逻辑 - 段 &amp; 符号映射"></a>5.2 ld 文件的编写逻辑 - 段 &amp; 符号映射</h3><p>5.1中讲述了ld文件中两大板块中的<strong>MEMORY</strong>部分，相当于根据芯片硬件特性、项目所需要的人为分区等，把整个芯片的RAM、PFLASH区域进行了详细的划分，给每个区域取名、指定起始地址的操作。而在第一节中，我们就知道了，代码编译后，会把代码、不同的变量分配到不同的段里。比如代码默认会被分配到.text段、全局已初始化变量会被分配到.data段、为初始化全局变量分配到.bss段、其他指定变量放到指定段等。而这小节，则讲述ld文件的第二大板块<strong>SECTIONS</strong>部分，这部分的主要作用就是：</p>
+<p><strong>进行逻辑段到物理内存的映射</strong>。在前面的MEMORY当中已经声明了很多区域的起始地址和长度，在SECTIONS就能派上用场了。本项目里的SECTIONS里，就是通过把<strong>段</strong>:&gt;<strong>分配到MEMORY声明的区域</strong>，来实现内存的映射的。主要的操作浓缩在以下表中</p>
+<p><img src="/../images/image-20260706013737896.png" alt="image-20260706013737896"></p>
+<p>以core0的DSPR为例，这里先用</p>
+<p>_RegionBlock_0_DSPR_Core0_START align(4) :&gt; RegionBlock_0_DSPR_Core0来声明一个段，分配到RegionBlock_0_DSPR_Core0区域，然后根据条件宏，进入到对应核的ld中，里面一系列完善的条件宏，通过当前编译出来的.o文件里的<strong>符号所放进的段名</strong>来判断是否要放进RegionBlock_0_DSPR_Core0区域内。ld文件写法如下图：</p>
+<p><img src="/../images/image-20260706014901190.png" alt="image-20260706014901190"></p>
+<p>大部分代码都有 MemMap 宏指定段名，这是在用Davinci配置生成代码的时候决定的。所以由配置产生的代码所定义的变量，就已经会被放进到DSPR里了。但是自己写的ASW的逻辑代码所定义的变量，如果没有指定到某个段，那么默认也是落在.data和.bss段的，所以这里把没有被放进core0的的.data和.bss段放到LMU0区域。ld文件写法如下图：</p>
+<p><img src="/../images/image-20260706015000724.png" alt="image-20260706015000724"></p>
+<h3 id="5-3-ld-文件的编写逻辑-特殊情况和符号导出"><a href="#5-3-ld-文件的编写逻辑-特殊情况和符号导出" class="headerlink" title="5.3 ld 文件的编写逻辑 - 特殊情况和符号导出"></a>5.3 ld 文件的编写逻辑 - 特殊情况和符号导出</h3><p>SECTIONS里大部分都是重复以上的操作，把编译出来的.o&#x2F;.lib文件里的各个段，放入到指定的区域对应的地址里区。但也有一些特殊情况，比如自定义的段，要放入自定义的区域：</p>
+<p><img src="/../images/image-20260706015359350.png" alt="image-20260706015359350"></p>
+<p>比如创建一个符号指向某个地址，并导出。这里再说一下符号(Symbol)的概念，.c写的代码主要包括了函数、变量、操作符等。在编译以后，函数和变量都会以Symbol的形式呈现，通常他和原来的函数名、变量名是同名的，链接器在读取ld文件进行把各个段映射到物理的内存地址这一操作时，实际上在最内部就是把所有的symbol和操作指令放到了对应的地址里去。MCU运行的时候，需要运行某一函数，实际上就是通过寻址到这个函数编译后的symbol的地址，从而找到函数的入口地址，然后再去依次寻址找到函数内的变量symbol和操作指令所放到的地址，放入到寄存器里执行计算的指令（例如赋值、加减乘除等），就是这样来完成整个函数的运行的。简单来说，symbol就是一个标记，起的作用是让人能知道某个symbol对应放入到了哪个地址去了，在TRACE32中调试的时候想要看到C语言源码来调试，就必须导入带有Symbol信息的.out文件，也正是这个原因。而对于MCU而言，它其实并没有Symbol的概念，在链接的阶段，相当于根据链接信息、调用的关系，把所有的symbol对应的名字、操作放入了指定的地址，那么这些地址以及地址里的数，就已经<strong>形成了与逻辑代码对应的存储和调用关系</strong>！那么MCU进入入口后，只需要根据写死的调用关系，依次跳到不同的地址去取指令、读数据，从而呈现出“代码正在运行”的效果。</p>
+<p>在下面这个例子中，创建一个符号，并让符号指向指定区域地址，在C代码中extern声明全局变量(变量名和符号一致)，可以通过取指符&amp;读取这个地址里的数据</p>
+<p><img src="/../images/image-20260706015416613.png" alt="image-20260706015416613"></p>
+<p>这里的I2C&#x3D;0xF00C0000也是创建一个符号，指向0xF00C0000,这个地址是芯片I2C配置的一个寄存器地址，如果在C代码中声明了同名变量，链接的阶段就会把他们视为同一个符号，使得那个变量存放的地址为0xF00C0000</p>
+<p><img src="/../images/image-20260706020943513.png" alt="image-20260706020943513"></p>
+<h2 id="6-问题和解决"><a href="#6-问题和解决" class="headerlink" title="6. 问题和解决"></a>6. 问题和解决</h2><p><strong>为什么APP区域要从0x80114000开始不从0x80000000开始？</strong></p>
+<p>根据芯片手册的描述，实际上就是经过cached访问pflash的地址是0x8000000开始，而不经过cached访问地址则是0xA开头，访问的是同一个物理区域，只是偏移0x20000000</p>
+<p><img src="/../images/image-20260706021114510.png" alt="image-20260706021114510"></p>
+<p>往上一翻可以看到FBL区域最后的地址起始是0xA0113E00，长度是0x200，最终占用到<strong>0xA0114000</strong>，实际上就是跟<strong>0x80114000</strong>对应的同一块物理地址</p>
+<p><img src="/../images/image-20260706021041325.png" alt="image-20260706021041325"></p>
+<p>至此，就是我从 <strong>内存架构(RAM&#x2F;ROM)</strong> 角度，对整个编译链接过程以及ld文件的写法、含义的详细解答。在这个过程，我更加深入的理解了MCU的执行逻辑、内存分布以及编译和链接的内在原理。后续我可能还将着重的理解分析cached和Non-cached的区别，探究如何提高cached命中率从而提高MCU的执行效率。这样可以从底层原理又回归到业务逻辑运行，形成闭环。当然中间还可能遇到别的问题和思考，也可能是值得一发的。</p>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
