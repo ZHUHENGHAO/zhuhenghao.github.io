@@ -294,6 +294,50 @@ body.dark-mode .project-tags span:hover {
 body.dark-mode .btn-github { background: #333; }
 body.dark-mode .btn-github:hover { background: #555; }
 
+/* 首页分页 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 28px 0 8px;
+}
+.pagination .page-number,
+.pagination .extend {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 19px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    box-shadow: 0 4px 12px var(--shadow-color);
+    transition: all 0.3s;
+}
+.pagination .page-number:hover,
+.pagination .extend:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.pagination .current {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+    font-weight: bold;
+}
+.pagination .extend {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+.pagination .space {
+    display: none;
+}
+
 
 /* ========================================================================= */
 /* 返回按钮、点赞与评论区样式 */
