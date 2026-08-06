@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            chtml: {
+                linebreaks: {
+                    automatic: true,
+                    width: 'container'
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">VeriHealthi 可穿戴健康监测——一个嵌入式系统的完整复盘</h1>
+    
+    
+    <div class="post-meta">
+        <span>写于：2026-07-29</span>
+    </div>
+    
+    <div class="post-body">
+        <h2 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a>摘要</h2><p>​		2026 年 7.19-25，我们参加了芯原杯嵌入式软件开发大赛决赛，这次经历还是比较难忘的，最终其实完成效果还可以，可惜最后因为种种原因没能拿到好名次。。。。</p>
+<p>​		本文是 “芯原杯全国嵌入式软件开发大赛” 参赛项目 <strong>VeriHealthi</strong> 的复盘记录。我们在 VeriSilicon CocoPalmR 平台上，以 FreeRTOS 为内核、BMI160 六轴 IMU 为数据源，做了一套可穿戴健康监测固件：穿戴检测、手势识别、步态识别在端侧实时推理，结果经 BLE 打包推送手机 App，并打通 UTC 授时、看门狗故障注入、断连缓存重发等可靠性链路。</p>
+<p>​		相比罗列功能，这篇文章主要相讲 <strong>设计背后的取舍</strong>：为什么用多任务 + 消息队列而不是裸机轮询、为什么 ISR 里 “只唤醒不干活”、穿戴检测为什么必须去 DC、BLE 传输为什么要做 AIMD 自适应批量、算法模型是怎么以 “零 malloc” 的方式塞进单片机的。</p>
+<p>注：本博客由完成的项目代码、PPT、报告等喂给 deepseek 完成撰写，本人 review 和修正补充完成。</p>
+<h2 id="第一章：我们在做什么"><a href="#第一章：我们在做什么" class="headerlink" title="第一章：我们在做什么"></a>第一章：我们在做什么</h2><h3 id="1-起点：一块-“什么都有”-的开发板"><a href="#1-起点：一块-“什么都有”-的开发板" class="headerlink" title="1. 起点：一块 “什么都有” 的开发板"></a>1. 起点：一块 “什么都有” 的开发板</h3><p>大赛给了一套基于 VeriSilicon Pegasus SoC（RISC-V 架构）的 CocoPalmR 开发板与 SDK。板上的核心资源：</p>
+<table>
+<thead>
+<tr>
+<th>资源</th>
+<th>配置</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BMI160</td>
+<td>I2C1，地址 0x68，50Hz，FIFO</td>
+<td>六轴 IMU，带硬件 FIFO</td>
+</tr>
+<tr>
+<td>RTC &#x2F; WDT &#x2F; GPIO &#x2F; LED</td>
+<td>—</td>
+<td>时间基准、可靠性、人机反馈</td>
+</tr>
+<tr>
+<td>BLE</td>
+<td>Zephyr 协议栈（<code>libble.a</code>）</td>
+<td>与手机 App 通信的唯一出口</td>
+</tr>
+</tbody></table>
+<p>SDK 已经把 HAL 驱动（<code>hal_imu</code>、<code>hal_gpio</code>、<code>hal_wdt</code>…）、OSAL（FreeRTOS 的抽象层）、BLE API 都封装好了。所以我们的任务不是从零造轮子，而是 <strong>基于这套 SDK 设计出一套有算法、有交互、有可靠性闭环的端侧方案</strong>，并让两个方向都能闭环：</p>
+<ul>
+<li><strong>数据 → 结果</strong>：IMU 原始数据 → 算法推理 → 动作枚举 → BLE 推送到手机。</li>
+<li><strong>指令 → 现象</strong>：App 写 UTC 授时 → 设备 RTC 生效；App 写故障注入 → 看门狗超时复位。</li>
+</ul>
+<h3 id="2-这套系统最终长什么样"><a href="#2-这套系统最终长什么样" class="headerlink" title="2. 这套系统最终长什么样"></a>2. 这套系统最终长什么样</h3><p><img src="/../images/s04_9.png" alt="系统总体架构"></p>
+<p><em>图：五层架构总览 —— 硬件 &#x2F; HAL &#x2F; 中间件 &#x2F; 公共服务 &#x2F; 应用任务，每一层只通过定义好的接口与上下层打交道。</em></p>
+<p>一句话概括我们的设计主线：<strong>同源数据、独立状态、统一事件、可靠交付</strong>。</p>
+<ul>
+<li><strong>同源数据</strong>：所有功能消费同一份 50Hz 六轴数据流。</li>
+<li><strong>独立状态</strong>：穿戴检测、手势、步态各自维护自己的状态机，互不干扰。</li>
+<li><strong>统一事件</strong>：识别结果统一映射为 <code>algo_result_t</code> 枚举，协议层与算法解耦。</li>
+<li><strong>可靠交付</strong>：结果带 UTC 时间戳、递增序号、CRC-8，断连可缓存重发。</li>
+</ul>
+<h2 id="第二章：架构设计——先想清楚再写代码"><a href="#第二章：架构设计——先想清楚再写代码" class="headerlink" title="第二章：架构设计——先想清楚再写代码"></a>第二章：架构设计——先想清楚再写代码</h2><p>软件设计最基本也是最重要的一环是架构。一个解耦良好的架构，对后续功能与算法的增、删、改都是事半功倍的——这是我们在项目里最深的体会。</p>
+<h3 id="1-为什么是多任务，而不是一个死循环"><a href="#1-为什么是多任务，而不是一个死循环" class="headerlink" title="1. 为什么是多任务，而不是一个死循环"></a>1. 为什么是多任务，而不是一个死循环</h3><p>早期我们评估过裸机 while 循环轮询的写法：把所有外设轮询、算法推理、BLE 发送塞进一个循环。但随着功能增多，这种写法有三个致命问题：<strong>一个模块卡住全系统卡住、无法并行开发、实时性无法保障</strong>。</p>
+<p>最终选择 FreeRTOS 多任务 + 消息队列，<strong>每个功能一个独立任务</strong>。这不仅是一个技术决策，更是一个 <strong>工程组织决策</strong>：三人各负责一个或几个任务，接口在公共头文件（<code>wd_queue.h</code>、<code>algorithm_queue.h</code>、<code>result_bus.h</code>、<code>ble_services.h</code>）里提前冻结，可以并行开发、独立调试，互不阻塞。</p>
+<p><img src="/../images/s06_7.png" alt="数据链路流转与任务设计"></p>
+<p><em>图：系统数据链路——IMU 采集作为单一数据源，向穿戴检测与算法两个消费者扇出。</em></p>
+<h3 id="2-任务划分与优先级：数据采集优先"><a href="#2-任务划分与优先级：数据采集优先" class="headerlink" title="2. 任务划分与优先级：数据采集优先"></a>2. 任务划分与优先级：数据采集优先</h3><table>
+<thead>
+<tr>
+<th>任务</th>
+<th>栈(words)</th>
+<th>优先级</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>imu_validation</code></td>
+<td>1024</td>
+<td><strong>4</strong></td>
+<td>FIFO 采集、样本分发（数据源头）</td>
+</tr>
+<tr>
+<td><code>wdt_monitor</code></td>
+<td>768</td>
+<td><strong>4</strong></td>
+<td>周期喂狗、故障注入（保命）</td>
+</tr>
+<tr>
+<td><code>wear_detect</code></td>
+<td>512</td>
+<td>3</td>
+<td>穿戴检测、LED、BLE Notify</td>
+</tr>
+<tr>
+<td><code>algorithm</code></td>
+<td>1024</td>
+<td>3</td>
+<td>手势 + 步态推理</td>
+</tr>
+<tr>
+<td><code>ble_task</code></td>
+<td>1024</td>
+<td>3</td>
+<td>打包、连接管理、发送</td>
+</tr>
+<tr>
+<td><code>time_sync</code></td>
+<td>512</td>
+<td>3</td>
+<td>RTC 授时与同步状态</td>
+</tr>
+<tr>
+<td><code>init_app</code></td>
+<td>512</td>
+<td>1</td>
+<td>一次性初始化，完成后自杀</td>
+</tr>
+</tbody></table>
+<p>优先级设计上我们遵循一条原则：<strong>数据采集优先</strong>。</p>
+<ul>
+<li>IMU 任务优先级最高——FIFO 读晚了会溢出丢数据，而数据是一切算法的前提。</li>
+<li>WDT 任务同优先级——看门狗喂晚了直接复位，属于 “保命” 优先级。</li>
+<li>业务逻辑任务放 3，采集空闲时运行即可。</li>
+</ul>
+<p><code>init_app</code> 是个一次性任务，做完外设初始化后 <code>osal_delete_task(NULL)</code> 自我销毁，把 512 words 栈空间还给系统——这个细节被我们沿用到了所有 “一次性” 场景。</p>
+<h3 id="3-公共服务层：五件解耦的-“基础设施”"><a href="#3-公共服务层：五件解耦的-“基础设施”" class="headerlink" title="3. 公共服务层：五件解耦的 “基础设施”"></a>3. 公共服务层：五件解耦的 “基础设施”</h3><p>架构图上有一层容易被忽略但价值最高的部分——公共服务层。它不实现业务，但让业务之间能干净地通信：</p>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>作用</th>
+<th>典型使用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Queue</strong></td>
+<td>连续数据分发</td>
+<td>IMU → 穿戴 &#x2F; 算法两条队列</td>
+</tr>
+<tr>
+<td><strong>Result Bus</strong></td>
+<td>识别结果统一出口，自动维护递增序号</td>
+<td>算法 → BLE 的缓冲队列（深度 256）</td>
+</tr>
+<tr>
+<td><strong>VPI Event</strong></td>
+<td>控制类事件唤醒</td>
+<td>BLE 传输请求、WDT 故障注入</td>
+</tr>
+<tr>
+<td><strong>BLE Services</strong></td>
+<td>3 个 GATT 服务集中定义</td>
+<td>回调注册模式解耦协议层与业务层</td>
+</tr>
+<tr>
+<td><strong>Resource Stats</strong></td>
+<td>资源监控</td>
+<td>队列收发、算法耗时、堆栈统计</td>
+</tr>
+</tbody></table>
+<p>这里的关键设计是 <strong>Result Bus 承担 “结果总线” 角色</strong>：算法任务只负责 <code>result_bus_publish(ts, result)</code>，完全不关心 BLE 是否连着、链路是否通畅。谁消费、怎么消费，由消费者决定。这让算法侧逻辑极其干净，也让断连缓存、重连补发这类可靠性逻辑可以独立在 BLE 侧实现。</p>
+<h2 id="第三章：数据链路怎么落地"><a href="#第三章：数据链路怎么落地" class="headerlink" title="第三章：数据链路怎么落地"></a>第三章：数据链路怎么落地</h2><h3 id="1-IMU-采集：ISR-只唤醒，不干活"><a href="#1-IMU-采集：ISR-只唤醒，不干活" class="headerlink" title="1. IMU 采集：ISR 只唤醒，不干活"></a>1. IMU 采集：ISR 只唤醒，不干活</h3><p>这是我们在嵌入式实时性上最重要的一个决策。IMU 数据 50Hz 产生，FIFO 水印中断触发采集。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">imu_validation_data_ready_isr</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    s_irq_count++;</span><br><span class="line">    <span class="keyword">if</span> (s_imu_data_sem != <span class="literal">NULL</span>)</span><br><span class="line">        (<span class="type">void</span>)osal_sem_post_isr(s_imu_data_sem);   <span class="comment">// ISR 里只放信号量</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ISR <strong>不读 I2C、不打印、不做任何重活</strong>，只累加计数并释放信号量；真正的 FIFO 批量读取放到任务上下文：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">FIFO 水印中断 → ISR 释放信号量 → imu_validation 任务被唤醒</span><br><span class="line">    → hal_imu_read_gyro_accel() 批量读（单次最多 64 帧）</span><br><span class="line">    → 逐帧同时写入 wd_queue 与 algorithm_queue（非阻塞）</span><br><span class="line">    → 重新使能中断</span><br></pre></td></tr></table></figure>
+
+<p><strong>为什么要这样？</strong> 如果在 ISR 里直接读 I2C，一次 I2C 事务可能占用几十微秒，水印中断又来得快，极易造成中断重载、饿死业务任务。改成 “中断唤醒 + 任务读取” 后，采集吞吐与算法推理互不阻塞，且无论后面加多少消费者，采集侧代码一行不用改——新消费者只需订阅队列即可。</p>
+<p><img src="/../images/s09_10.png" alt="IMU 采集与双队列分发"></p>
+<p><em>图：IMU 采集任务的 FIFO 中断 → 批量读取 → 双队列非阻塞分发。</em></p>
+<h3 id="2-穿戴检测：一个-“直觉方案失败后”-的典型复盘"><a href="#2-穿戴检测：一个-“直觉方案失败后”-的典型复盘" class="headerlink" title="2. 穿戴检测：一个 “直觉方案失败后” 的典型复盘"></a>2. 穿戴检测：一个 “直觉方案失败后” 的典型复盘</h3><p>穿戴检测的目标很简单：判断设备是否戴在手上。最直觉的方案是 <strong>直接算三轴加速度方差</strong>——运动时有波动，静止时没有。</p>
+<p>但这个方案一实测就翻车：重力信号主导了方差。佩戴静止时重力分量远大于生理微动，方差和 “平放桌面” 几乎没差别，根本分不开。</p>
+<p><strong>复盘结论：先减掉 DC 分量，再做统计。</strong></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 逐轴 EMA 跟踪重力基线（alpha = 1/32，约 0.25Hz 低通）</span></span><br><span class="line">mean_ax += ((<span class="type">int32_t</span>)ax - mean_ax) &gt;&gt; WD_ALPHA_SHIFT;</span><br><span class="line">...</span><br><span class="line"><span class="comment">// 减去重力基线，得到纯运动分量</span></span><br><span class="line">dx = ax - mean_ax;  dy = ay - mean_ay;  dz = az - mean_az;</span><br><span class="line"><span class="comment">// 活动量方差 = 三轴去 DC 偏差平方和的 EMA</span></span><br><span class="line">s_wd.var += (activity - s_wd.var) &gt;&gt; WD_ALPHA_SHIFT;</span><br></pre></td></tr></table></figure>
+
+<p>EMA 低通只跟踪重力的 <strong>缓慢姿态变化</strong>，步态&#x2F;手势这类 5~10Hz 的快速运动被大幅衰减，因此基线不会被瞬时动作带偏。去 DC 后的 var 三个量级清晰可分：</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>var 量级</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>平放桌面</td>
+<td>200 ~ 1000（本底噪声）</td>
+</tr>
+<tr>
+<td>佩戴静止</td>
+<td>5k ~ 20k（生理微动）</td>
+</tr>
+<tr>
+<td>佩戴运动</td>
+<td>1,000,000+</td>
+</tr>
+</tbody></table>
+<p>阈值判定再用一个 <strong>不对称迟滞状态机</strong>：上阈值 10000（未戴 → 已戴，立即翻转），下阈值 2000（已戴 → 未戴，需持续 3 秒）。不对称是刻意的——戴上一瞬间要快速响应，而静坐、睡眠这类短暂静止不能被误判成脱落。</p>
+<p><img src="/../images/s07_7.png" alt="穿戴检测算法"></p>
+<p><em>图：穿戴检测的阈值判据与状态机。</em></p>
+<h3 id="3-时间同步：宁可丢数据，不可发错时间戳"><a href="#3-时间同步：宁可丢数据，不可发错时间戳" class="headerlink" title="3. 时间同步：宁可丢数据，不可发错时间戳"></a>3. 时间同步：宁可丢数据，不可发错时间戳</h3><p>设备本身没有绝对时间，所有算法结果都要带 UTC 时间戳，只能靠 App 授时。我们在 BLE 的 Timing Service 上实现了一层 <strong>双重授时门控</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">App Write 8 字节 UTC 毫秒时间戳</span><br><span class="line">   → 校验①：长度必须 8 字节</span><br><span class="line">   → 校验②：拒绝 2024 年之前的时间戳（防异常值）</span><br><span class="line">   → 补偿：UTC_SYNC_COMPENSATION_MS = 1000ms（抵消 BLE 传输延迟）</span><br><span class="line">   → hal_set_utc_time() 更新 RTC</span><br></pre></td></tr></table></figure>
+
+<p>授时门控是 <strong>双重的</strong>——算法侧在 <code>publish_if_synced()</code> 里检查未同步就静默丢弃；BLE 发送侧也要求 “当前连接已授时” 才允许发包。</p>
+<p>这是一个我们反复权衡后定下的原则：<strong>宁可丢数据，绝不发错时间戳</strong>。因为时间戳是后续数据对账、步态节奏分析的基础，错的时间戳比没有更糟糕——它会让整段数据在时间轴上失真。</p>
+<h2 id="第四章：BLE-通信——端侧系统的出口"><a href="#第四章：BLE-通信——端侧系统的出口" class="headerlink" title="第四章：BLE 通信——端侧系统的出口"></a>第四章：BLE 通信——端侧系统的出口</h2><h3 id="1-协议设计：轻量、自校验、可追踪"><a href="#1-协议设计：轻量、自校验、可追踪" class="headerlink" title="1. 协议设计：轻量、自校验、可追踪"></a>1. 协议设计：轻量、自校验、可追踪</h3><p>算法结果统一打包成 VESC 协议包发送：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">magic[4] &quot;vesc&quot; | start_flag[1] | crc8[1] | result_num[1] | data_len[2] | result_item[N×11]</span><br></pre></td></tr></table></figure>
+
+<p>每个 <code>result_item</code> 11 字节：<code>timestamp_ms[8] | sequence[2] | result[1]</code>，全部小端。CRC-8&#x2F;SMBus 用查表法（多项式 0x07），<strong>只校验结果区</strong>，避免包头被校验连累。</p>
+<p>三个细节体现了 “可追踪” 的设计思路：</p>
+<ul>
+<li><strong>递增序号</strong> 由 Result Bus 自动维护：设备复位归零、断线期间不归零，保证整段时间序列连续，App 可以据此发现丢包。</li>
+<li><strong>start_flag 双 bit</strong>：bit0 系统首包、bit1 连接首包——让 App 知道 “这批是积压的旧数据补发” 还是 “实时的首包”。</li>
+<li><strong>结果枚举</strong> 从手势&#x2F;步态统一映射：捏合 &#x3D; 2、握拳 &#x3D; 4、抬腕 &#x3D; 6、走路 &#x3D; 8、跑步 &#x3D; 9…，无效动作直接不发送，减少无效流量。</li>
+</ul>
+<h3 id="2-断连缓存重发：结果一个都不能丢"><a href="#2-断连缓存重发：结果一个都不能丢" class="headerlink" title="2. 断连缓存重发：结果一个都不能丢"></a>2. 断连缓存重发：结果一个都不能丢</h3><p>BLE 连接是极不稳定的——手一抬、走两步就断。算法任务可不管这些，它每秒都在产结果。如果断线期间不处理，结果就全丢了。</p>
+<p>我们的方案是 <strong>Result Bus（深度 256 的队列）+ BLE 侧断连重发</strong>：</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">断线：ble_default_conn == NULL → 发送任务不碰队列</span><br><span class="line">      │  算法任务照常 publish，结果持续入队</span><br><span class="line">      │  （队列满则丢弃新结果并打日志，绝不阻塞算法）</span><br><span class="line">      ▼</span><br><span class="line">重连：连接回调更新指针、置位&quot;连接首包&quot;</span><br><span class="line">      → 发送任务进入快速批量排空模式</span><br><span class="line">      → 非阻塞读完所有积压 → 按 MTU 容量分批发送</span><br><span class="line">      → 队列空 → 切回单项阻塞模式</span><br></pre></td></tr></table></figure>
+
+<p>256 深度 × 14B ≈ 3.5KB，按 1Hz 输出可缓存约 4 分钟——足以覆盖大多数临时断线场景。重连后 App 拿到的是连续序号 + 连接首包标记，可以完整还原断线期间的动作轨迹。</p>
+<p><img src="/../images/s08_7.png" alt="断连缓存重发机制"></p>
+<p><em>图：断连缓存重发的整体流程。</em></p>
+<h3 id="3-自适应批量：把-AIMD-用到了-BLE-上"><a href="#3-自适应批量：把-AIMD-用到了-BLE-上" class="headerlink" title="3. 自适应批量：把 AIMD 用到了 BLE 上"></a>3. 自适应批量：把 AIMD 用到了 BLE 上</h3><p>发结果时单条一条发太浪费——每个 Notify 都有 ATT 头部开销。所以我们在 MTU 允许范围内 <strong>批量打包</strong>（设计 MTU 515 → 每包最多 45 项）。但问题是：<strong>不同连接的链路质量天差地别</strong>，固定批量要么塞不满、要么把协议栈内部缓冲打爆。</p>
+<p>借鉴 TCP 的 <strong>AIMD（加性增&#x2F;乘性减）</strong>：</p>
+<ul>
+<li>每次成功发送后批量上限 <code>+1</code>（试探更激进）。</li>
+<li>收到协议栈 <code>-ENOMEM</code>（内部缓冲耗尽）就 <strong>减半</strong>，并保留未发送前缀重试更小的包。</li>
+</ul>
+<p>这个策略自动收敛到当前连接能承受的最大速率——强链路提速、弱链路降速，全程无需人工配置。这是我们把这个 “网络层思维” 搬到 MCU 通信上最得意的一笔。</p>
+<p><img src="/../images/s10_11.png" alt="BLE 自适应批量发送"></p>
+<p><em>图：BLE 批量发送的自适应调节逻辑。</em></p>
+<h2 id="第五章：可靠性——看门狗与资源监控"><a href="#第五章：可靠性——看门狗与资源监控" class="headerlink" title="第五章：可靠性——看门狗与资源监控"></a>第五章：可靠性——看门狗与资源监控</h2><h3 id="1-看门狗：一个可远程-“自杀”-的保命链"><a href="#1-看门狗：一个可远程-“自杀”-的保命链" class="headerlink" title="1. 看门狗：一个可远程 “自杀” 的保命链"></a>1. 看门狗：一个可远程 “自杀” 的保命链</h3><p>硬件看门狗是最后一道防线，我们把它做成了 <strong>独立任务 + 故障注入</strong>：</p>
+<ul>
+<li>正常模式：VPI 软件定时器每 2500ms <code>hal_wdt_reload()</code> 喂狗（WDT 超时 5000ms，留 2500ms 容错余量）。</li>
+<li>故障注入：App 写 0x01 → 点亮蓝灯、停掉喂狗定时器、<code>system_enter_fault()</code> 挂起业务任务 → 约 5s 后 WDT 超时硬件复位。</li>
+</ul>
+<p><img src="/../images/s10_0.png" alt="WDT 故障验证"></p>
+<p><em>图：故障注入后的蓝灯指示与复位行为。</em></p>
+<p>这个机制的价值不只是验证 WDT 本身——它给整个系统提供了一个 <strong>远程重启的逃生舱</strong>。当出现不可恢复的软件异常时，评审&#x2F;调试现场可以通过 App 一键把设备打回出厂状态，而不是扒壳短路复位。</p>
+<h3 id="2-资源监控：给每个队列和算法装上-“仪表盘”"><a href="#2-资源监控：给每个队列和算法装上-“仪表盘”" class="headerlink" title="2. 资源监控：给每个队列和算法装上 “仪表盘”"></a>2. 资源监控：给每个队列和算法装上 “仪表盘”</h3><p>我们专门加了一个 <code>resource_stats</code> 监控任务（优先级 1，最低），它不参与业务，只做一件事：<strong>统计</strong>。</p>
+<ul>
+<li>每个队列的发送&#x2F;接收是否失败、是否积压。</li>
+<li>每次算法推理的耗时（毫秒级）。</li>
+<li>每个任务的栈高水位（<code>uxTaskGetStackHighWaterMark</code>）。</li>
+</ul>
+<p>在开发后期这成了救命工具——<strong>算法任务栈从 512 调到 1024</strong> 就是靠它发现栈高水位告警后改的；队列偶尔积压也是靠它定位到是 BLE 慢还是 IMU 快。</p>
+<h2 id="第六章：算法集成（简述）"><a href="#第六章：算法集成（简述）" class="headerlink" title="第六章：算法集成（简述）"></a>第六章：算法集成（简述）</h2><p>算法不是本文重点，只讲嵌入式侧的关键决策。我们集成了两个模型，两者都遵守同一条铁律：<strong>端侧零动态内存分配，纯因果推理</strong>。</p>
+<h3 id="1-手势识别：冻结基础模型，只训微动作"><a href="#1-手势识别：冻结基础模型，只训微动作" class="headerlink" title="1. 手势识别：冻结基础模型，只训微动作"></a>1. 手势识别：冻结基础模型，只训微动作</h3><p>两级 CNN 级联——50 帧基础模型负责粗分类（抬腕&#x2F;放下&#x2F;捏合&#x2F;握拳），70 帧微动作模型负责区分单次&#x2F;双次动作。<strong>关键决策：基础模型冻结</strong>（已是 MCU 上的成熟模型），只训练微动作模型，训练完与旧权重按比例混合，兼顾稳定性与新知识。</p>
+<p>模型权重以 const 数组固化进 Flash（<code>gesture_weights.c</code>），运行时全部 static 缓冲区，50Hz 逐帧因果处理。识别结果：捏合、捏合 ×2、握拳、握拳 ×2、抬腕、放下共 6 种，测试集窗口级 F1 均 0.94+。</p>
+<h3 id="2-步态识别：随机森林只管-“状态”，事件检测只管-“时刻”"><a href="#2-步态识别：随机森林只管-“状态”，事件检测只管-“时刻”" class="headerlink" title="2. 步态识别：随机森林只管 “状态”，事件检测只管 “时刻”"></a>2. 步态识别：随机森林只管 “状态”，事件检测只管 “时刻”</h3><p>步态识别拆成两个问题分而治之：**”当前在走路还是跑步？”** 由随机森林（每 10 帧分析 96 帧窗口）回答；**”这一步在哪一帧？”** 由模板互相关&#x2F;能量峰值检测器回答。只有门控状态与单步候选一致、且通过节律校验时才输出事件。</p>
+<p>模型参数 20 棵树、1054 个节点，全部以紧凑结构存 Flash。Event F1 0.8882，最差用户 F1 0.7478，others 误报 2.1 次&#x2F;分钟。</p>
+<blockquote>
+<p><strong>嵌入式侧的体会</strong>：模型训练是一回事，部署是另一回事。整个算法移植的核心工作其实是 <strong>把训练时的窗口、状态机、阈值翻译成端侧的确定性逻辑</strong>——训练脚本的 <code>step_event_model_v8.py</code> &#x2F; <code>gesture_model.py</code> 与端侧 C 代码逐行对应，这才保证了 “训练准” 和 “跑起来准” 是一致的。</p>
+</blockquote>
+<p><img src="/../images/s13_9.png" alt="双算法并行处理"></p>
+<p><em>图：手势（短时动作）与步态（周期运动）共享同一份 IMU 数据、逐帧并行推理。</em></p>
+<h2 id="第七章：复盘——踩过的坑与沉淀"><a href="#第七章：复盘——踩过的坑与沉淀" class="headerlink" title="第七章：复盘——踩过的坑与沉淀"></a>第七章：复盘——踩过的坑与沉淀</h2><h3 id="1-决策清单：为什么是这样"><a href="#1-决策清单：为什么是这样" class="headerlink" title="1. 决策清单：为什么是这样"></a>1. 决策清单：为什么是这样</h3><table>
+<thead>
+<tr>
+<th>决策</th>
+<th>备选方案</th>
+<th>为什么选它</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>多任务 + 队列</td>
+<td>裸机轮询</td>
+<td>故障隔离、并行开发、实时性可控</td>
+</tr>
+<tr>
+<td>ISR 只唤醒</td>
+<td>ISR 里读 I2C</td>
+<td>避免中断重载、采集与推理解耦</td>
+</tr>
+<tr>
+<td>穿戴检测去 DC</td>
+<td>直接算方差</td>
+<td>重力主导，方差分不开</td>
+</tr>
+<tr>
+<td>授时门控</td>
+<td>先发后补</td>
+<td>错时间戳比没有更糟</td>
+</tr>
+<tr>
+<td>AIMD 批量</td>
+<td>固定批量</td>
+<td>链路质量未知，需自适应</td>
+</tr>
+<tr>
+<td>模型零 malloc</td>
+<td>运行时 malloc</td>
+<td>MCU 堆小且碎片化，不可控</td>
+</tr>
+</tbody></table>
+<h3 id="2-踩过的坑"><a href="#2-踩过的坑" class="headerlink" title="2. 踩过的坑"></a>2. 踩过的坑</h3><ul>
+<li><strong>BLE <code>-ENOMEM</code> 陷阱</strong>：协议栈返回 -ENOMEM 不等于包太大，而是 <strong>内部缓冲耗尽</strong>。一开始我们把它当成 “改小包” 信号，后来意识到要 “暂停一会儿”——AIMD 减半 + 保留前缀重试才是对的。</li>
+<li><strong>穿戴检测误判脱落</strong>：初版阈值对称、无防抖，静坐几秒就误报 “脱落”。加 3 秒防抖 + 不对称阈值后解决。</li>
+<li><strong>算法任务栈溢出</strong>：靠资源监控的栈高水位抓出来的，从 512 调到 1024。</li>
+<li><strong><code>other_gestures</code> 里混着走路</strong>：直接把全部 others 数据当步态负样本会污染模型，必须按任务分别清洗正负样本。</li>
+</ul>
+<h3 id="3-可复用资产"><a href="#3-可复用资产" class="headerlink" title="3. 可复用资产"></a>3. 可复用资产</h3><p>这套代码的价值在于它的 <strong>骨架</strong> 是可复用的。如果下次要做 “传感器 + 算法 + BLE” 的可穿戴设备，可以原样拿走的：</p>
+<ul>
+<li><code>wd_queue / algorithm_queue / result_bus</code> 的 <strong>多消费者扇出 + 结果总线</strong> 模式。</li>
+<li><code>ble_task</code> 的 <strong>AIMD 自适应批量 + 断连缓存重发</strong> 完整实现。</li>
+<li><code>wear_detect</code> 的 <strong>去 DC + 迟滞状态机</strong> 检测范式。</li>
+<li><code>resource_stats</code> 的 <strong>资源监控任务</strong>。</li>
+<li>三个 GATT 服务的 <strong>回调注册解耦</strong> 模式。</li>
+</ul>
+<h2 id="附录：结果展示"><a href="#附录：结果展示" class="headerlink" title="附录：结果展示"></a>附录：结果展示</h2><p><img src="/../images/image-20260807020701168.png" alt="image-20260807020701168"></p>
+<p>​																						<strong><span style="font-size:1.4em;">核心板</span></strong></p>
+<p><img src="/../images/image-20260807020817046.png" alt="image-20260807020817046"></p>
+<p><strong><span style="font-size:1.4em;">																Debug板</span></strong></p>
+<p><img src="/../images/image-20260807020912252.png" alt="image-20260807020912252"></p>
+<p>​																				<span style="font-size:1.1em;"><strong>APP实测截图</strong></span></p>
+<p><img src="/../images/image-20260807021010753.png" alt="image-20260807021010753"></p>
+<p>​																					<span style="font-size:1.2em;"><strong>数据包</strong></span></p>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
