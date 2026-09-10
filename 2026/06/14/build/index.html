@@ -99,7 +99,7 @@
 <p><img src="/../images/%E7%BC%96%E8%AF%91%E9%93%BE%E8%B7%AF%E5%BA%8F%E5%88%97%E5%9B%BE2.png" alt="编译链路序列图"></p>
 <p>上图为标准 GCC 工具链的编译链路序列图，与本项目流程一致：编译器处理源文件并检查头文件依赖，归档工具打包目标文件为静态库，链接器最终合并输出可执行文件。</p>
 <h3 id="1-3-项目构建命令传参链路"><a href="#1-3-项目构建命令传参链路" class="headerlink" title="1.3 项目构建命令传参链路"></a>1.3 项目构建命令传参链路</h3><p>上述序列图描述的是标准 GCC 工具链的基础流程。本项目的实际构建在此基础上增加了两层调度——CMake 统一配置管理和 Ninja 并发执行，两者共同驱动 GHS 工具链完成嵌入式固件构建。完整命令传参链路如下：</p>
-<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Build.bat -o APP/BL/BM -p vcuplus -tc TC397x</span><br><span class="line">    ↓</span><br><span class="line">AutosarUtility.py（解析参数，生成分区配置）</span><br><span class="line">    ↓</span><br><span class="line">CMake（读取 Aurix-toolchain.txt，指定 GHS 编译器路径）</span><br><span class="line">    ↓</span><br><span class="line">build.ninja（自动生成，描述构建规则）</span><br><span class="line">    ↓</span><br><span class="line">Ninja（并发调度，先并行编译全部 .c → .o，再一步链接）</span><br><span class="line">    ↓</span><br><span class="line">GHS elxr（读取主 LD 文件，展开全部 #include 链接脚本链）</span><br><span class="line">    ↓</span><br><span class="line">.out / .map / .s19 / .srec</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">Build.bat -o APP/BL/BM -p generic_vcu -tc TC397x</span><br><span class="line">    ↓</span><br><span class="line">AutosarUtility.py（解析参数，生成分区配置）</span><br><span class="line">    ↓</span><br><span class="line">CMake（读取 Aurix-toolchain.txt，指定 GHS 编译器路径）</span><br><span class="line">    ↓</span><br><span class="line">build.ninja（自动生成，描述构建规则）</span><br><span class="line">    ↓</span><br><span class="line">Ninja（并发调度，先并行编译全部 .c → .o，再一步链接）</span><br><span class="line">    ↓</span><br><span class="line">GHS elxr（读取主 LD 文件，展开全部 #include 链接脚本链）</span><br><span class="line">    ↓</span><br><span class="line">.out / .map / .s19 / .srec</span><br></pre></td></tr></table></figure>
 
 <p>GHS 链接器（elxr）在链接阶段读入主 LD 文件后，会自动展开其中 <code>#include</code> 引用的全部子链接脚本（项目中共包含 24 个 LD 文件），将每个编译单元输出的段映射到 MEMORY 中声明的物理地址区间，最终输出四类产物：</p>
 <table>
@@ -123,7 +123,7 @@
 </tr>
 </tbody></table>
 <h2 id="2-LD-文件（链接脚本）理解"><a href="#2-LD-文件（链接脚本）理解" class="headerlink" title="2. LD 文件（链接脚本）理解"></a>2. LD 文件（链接脚本）理解</h2><h3 id="2-1-LD-文件的作用"><a href="#2-1-LD-文件的作用" class="headerlink" title="2.1 LD 文件的作用"></a>2.1 LD 文件的作用</h3><p>LD 文件（Linker Script，链接脚本）是编译前由开发者手写的配置文件，核心作用是<strong>定义固件中每个代码段和数据段在 Flash&#x2F;RAM 中的绝对物理地址</strong>。开发者需要根据芯片硬件手册中的内存映射表来编写 LD 文件，通过 <code>MEMORY &#123;&#125;</code> 块声明每个区域的起始地址和大小，再通过 <code>SECTIONS &#123;&#125;</code> 块将编译器生成的段（如 .text、.rodata、.bss）映射到对应的物理区域中。</p>
-<p><img src="/../images/image-20260614030032279.png" alt="项目ld文件结构图"></p>
+<p><img src="/../images/vcu-build-directory.png" alt="某 VCU 项目的链接脚本目录结构"></p>
 <p><strong>项目 LD 文件结构图</strong>展示了嵌入式软件开发从需求分析到联调的完整生命周期，以及 LD 文件在其中所处的构建环节位置。</p>
 <h3 id="2-2-MEMORY-块：地址空间声明表"><a href="#2-2-MEMORY-块：地址空间声明表" class="headerlink" title="2.2 MEMORY 块：地址空间声明表"></a>2.2 MEMORY 块：地址空间声明表</h3><p><code>MEMORY &#123;&#125;</code> 块是 LD 文件中的地址空间声明表，用于定义一个命名区域的起始地址与大小。实际项目中，MEMORY 声明主要分为三类：</p>
 <table>
@@ -190,12 +190,12 @@
 <td>分析模块间依赖关系，排查未定义符号或重复定义错误</td>
 </tr>
 </tbody></table>
-<p><img src="/../images/image-20260614025817858.png" alt="MAP文件分区结构图"></p>
+<p><img src="/../images/map-file-version-row.png" alt="MAP 文件版本信息行示意图"></p>
 <h3 id="3-3-版本号提取的工程实践"><a href="#3-3-版本号提取的工程实践" class="headerlink" title="3.3 版本号提取的工程实践"></a>3.3 版本号提取的工程实践</h3><p>一个典型的工程应用场景是：从编译出的固件二进制中直接读取版本号字符串，而无需源代码参与。具体做法是：</p>
 <ol>
 <li><strong>定义阶段</strong>：在源码中通过 <code>#pragma ghs section rodata = &quot;.SW_VERSION_STRING&quot;</code> 将版本号放入特殊命名的段。</li>
 <li><strong>映射阶段</strong>：在 LD 文件的 SECTIONS 块中，将 <code>.SW_VERSION_STRING</code> 映射到 Flash 中的固定物理地址（如 0xA0094100）。</li>
-<li><strong>读取阶段</strong>：固件烧录后，直接从 MAP 文件的 Image Summary 或 Global Symbols 中查得 SW_VERSION_STRING 所在地址。例如 VCUPLUS 的 GM_IDC_VCUPLUS_BL.map 中可直接查到 <code>SW_VERSION_STRING</code> 位于 <code>0xA0094100</code>，用此地址在 .s19 文件中偏移读取即为版本号字符串。</li>
+<li><strong>读取阶段</strong>：固件烧录后，直接从 MAP 文件的 Image Summary 或 Global Symbols 中查得 SW_VERSION_STRING 所在地址。例如某 VCU 项目的 MAP 文件中可直接查到 <code>SW_VERSION_STRING</code> 所在地址，再用此地址在 .s19 文件中偏移读取即可得到版本号字符串。</li>
 </ol>
 <p>这个机制在生产环境中尤为重要：即使源代码不可得，只要手握 MAP 文件和固件，就能定位并提取任意已知符号的数据。</p>
 <h2 id="4-总结"><a href="#4-总结" class="headerlink" title="4. 总结"></a>4. 总结</h2><p>本文围绕嵌入式编译构建链路展开：首先梳理了 CMake、CMakeLists.txt、<code>.cmake</code> 工具链文件、Ninja 与 GHS 编译器&#x2F;链接器各组件的核心概念与作用，明确了各层工具的职责边界；随后按时间顺序解析了构建配置、并行编译、归档、链接四阶段的完整时序，并通过项目五层传参链路（Build.bat → Python → CMake → Ninja → GHS）串联起完整的工具协作关系；在此基础上深入分析了 LD 文件中 MEMORY 地址声明与 SECTIONS 段映射两大核心机制，以及 MAP 文件四个分区的内容含义与典型工程应用场景。</p>
