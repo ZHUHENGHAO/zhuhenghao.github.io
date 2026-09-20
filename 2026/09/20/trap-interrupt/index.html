@@ -110,7 +110,7 @@
 </tbody></table>
 <p>但是也不能直接用“外部事件是 Interrupt、CPU 内部错误是 Trap”来定义。比如说TriCore 的 NMI 虽然叫 Non-Maskable <strong>Interrupt</strong>，实际走异步 Trap 路径；<code>SYSCALL</code> 是软件主动触发的 Trap，正常使用时根本不是故障。Trap 既可能同步于某条指令，也可能异步发生。<strong>真正决定入口的是事件走中断优先级系统，还是 Trap Class 系统。</strong></p>
 <p>整体来说，不管是Trap还是interrupt，背后的本质都是触发后去根据相应的寄存器里存放的向量表的基址跳转，然后根据向量表定义好的地址再根据硬件机制判断当前触发的是哪种类型的中断&#x2F;异常？再根据向量表的定义跳转到指定地址，执行一些上下文保存操作之类的操作(汇编语言)。对于Tricore的架构而言，Trap和Interrupt是有两个单独的向量表分别维护的，示意图如下：</p>
-<p><img src="/../../../../data/Verisilicon_finals/Program/PDF%E8%BD%ACMD/%E5%9B%BE%E7%89%87/image-20260920191524697.png" alt="image-20260920191524697"></p>
+<p><img src="/../images/image-20260920194425765.png" alt="image-20260920194425765"></p>
 <p><code>BIV</code> 和 <code>BTV</code> 表内的入口是<strong>可执行代码</strong>，短短几条指令通常再跳往完整 Handler。这也解释了为何调试器停在 OS Handler 时，当前 <code>PC</code> 已经不在向量槽内。</p>
 <h2 id="2-例子1：CAN-中断为何有时进不了-ISR"><a href="#2-例子1：CAN-中断为何有时进不了-ISR" class="headerlink" title="2. 例子1：CAN 中断为何有时进不了 ISR"></a>2. 例子1：CAN 中断为何有时进不了 ISR</h2><p>假设 CAN 控制器已经提出服务请求，中断路由把待处理请求的优先级号送到目标 Core，记作 <code>PIPN</code>。CPU 并非一收到请求就立刻跳走，还要满足两个条件：全局中断使能位 <code>ICR.IE = 1</code>，并且 <code>PIPN</code> 高于当前 CPU 优先级 <code>ICR.CCPN</code>。否则请求可以保持待处理，等条件允许后再响应。</p>
 <p>响应时，CPU 保存被打断程序的 Upper Context，按 <code>BIV</code> 和 <code>PIPN</code> 找到 ISR 向量入口。向量槽位有 8 字节和 32 字节两种间距，取决于 <code>BIV.VSS</code> 的配置。所以入口地址可以理解为：</p>
