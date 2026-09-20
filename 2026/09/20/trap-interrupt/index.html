@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZHUHENGHAO的个人博客</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            chtml: {
+                linebreaks: {
+                    automatic: true,
+                    width: 'container'
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<meta name="generator" content="Hexo 7.3.0"></head>
+<body>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+    </script>
+
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/"><i class="fas fa-home" style="color: #49b1f5;"></i> <span style="color: #49b1f5;">博客主页</span></a>
+            </div>
+            <div class="nav-menu">
+                <a href="https://github.com/ZHUHENGHAO" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+                <button id="theme-toggle" class="icon-btn" title="切换深色模式">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">ZHUHENGHAO的个人博客</h1>
+            <p class="hero-subtitle">热爱生活的小站</p>
+        </div>
+    </header>
+
+    <main class="main-container no-sidebar">
+        <div class="content-left">
+            
+                <div class="page-controls">
+                    <button class="btn-back" onclick="window.history.length > 1 ? window.history.back() : window.location.href='/'">
+                        <i class="fas fa-arrow-left"></i> 返回上一页
+                    </button>
+                </div>
+            
+
+            <article class="post-content">
+    <h1 class="post-title">Trap与Interrupt的理解</h1>
+    
+    
+    <div class="post-meta">
+        <span>写于：2026-09-20</span>
+    </div>
+    
+    <div class="post-body">
+        <h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><p>最近一直在准备秋招的事项，也马上就得回学校干那个<strong>SHABI</strong>课题了，很久没有更新博客了。。。最近花了点时间梳理了一下Trap和Interrupt的概念，这个是在实习的时候从英飞凌芯片中接触了解到的。</p>
+<p>首先在英飞凌的Tricore架构中，Trap 是 TriCore CPU 架构提供的一种异常事件处理机制。当 CPU 或系统检测到特定异常条件，或者软件主动触发特定 Trap 时，CPU 会中断当前正常执行流，保存必要的执行上下文，并通过 Trap Vector Table 转移到对应的 Trap Handler 进行处理，这一点触发的底层逻辑和我们经常会用到的中断，也就是interrupt很像，但是核心的含义却不一样，简单来说<strong>中断更像是请求响应机制</strong>、<strong>Trap</strong>则是<strong>异常控制流机制</strong>。后面会详细说明。Trap 不等于“程序报错”，更准确地说是一套<span style="color:#CC0000;"><strong>特殊事件&#x2F;异常的控制流转移机制</strong></span>。芯片手册中对于Trap的定义如下：</p>
+<p><img src="/../../../../data/Verisilicon_finals/Program/PDF%E8%BD%ACMD/%E5%9B%BE%E7%89%87/image-20260920185831612.png" alt="image-20260920185831612"></p>
+<p>查 TC3xx 的 OS 异常处理代码时，启动文件分别初始化 <code>BIV</code> 和 <code>BTV</code>这两个寄存器。外设中断从 <code>BIV</code> 进入，访问保护错误却从 <code>BTV</code> 进入。同样是“当前程序被打断”，为什么要准备两张表？如果调试器已经停在 OS 的 Handler，原来出问题的指令又在哪里？</p>
+<p>关键是 TriCore 把 <strong>Interrupt 服务请求</strong>和 <strong>Trap 事件</strong>交给两套不同的分发机制。Cortex-M4 则把外部 IRQ、HardFault 等纳入同一套 Exception 机制。名字相似，分类方法并不一样。</p>
+<h2 id="1-Trap-和-Interrupt-究竟按什么区分"><a href="#1-Trap-和-Interrupt-究竟按什么区分" class="headerlink" title="1. Trap 和 Interrupt 究竟按什么区分"></a>1. Trap 和 Interrupt 究竟按什么区分</h2><p><img src="/../images/trap-interrupt-paths.png" alt="TriCore 的两条异常入口路径"></p>
+<p><strong>CAN 控制器收到一帧数据</strong>，向 CPU 发出服务请求：中断系统仲裁优先级，再按 <code>BIV</code> 找到 ISR。程序执行 <code>LD.W</code> 时读取了无权访问的地址：<strong>CPU 识别出保护错误</strong>，按 Trap Class 从 <code>BTV</code> 进入 Trap Handler。前者回答“<strong>哪个服务请求该由 CPU 处理</strong>”，后者回答“<strong>发生了哪类异常事件</strong>”。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>TriCore Interrupt</th>
+<th>TriCore Trap</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>入口由什么索引</td>
+<td>待处理请求的优先级号 <code>PIPN</code></td>
+<td>Trap Class Number，即 <code>TCN</code>；同类中的原因看 <code>TIN</code></td>
+</tr>
+<tr>
+<td>入口在哪里</td>
+<td><code>BIV</code> 指向的中断向量表</td>
+<td><code>BTV</code> 指向的 Trap 向量表</td>
+</tr>
+<tr>
+<td>会不会被普通中断屏蔽条件挡住</td>
+<td><code>ICR.IE = 0</code> 或 <code>PIPN ≤ ICR.CCPN</code> 时暂不响应</td>
+<td>不受 <code>ICR.IE/CCPN</code> 这套条件屏蔽</td>
+</tr>
+<tr>
+<td>典型例子</td>
+<td>定时器到期、CAN 收到报文</td>
+<td>访问保护错误、非法指令、<code>SYSCALL</code>、NMI</td>
+</tr>
+</tbody></table>
+<p>但是也不能直接用“外部事件是 Interrupt、CPU 内部错误是 Trap”来定义。比如说TriCore 的 NMI 虽然叫 Non-Maskable <strong>Interrupt</strong>，实际走异步 Trap 路径；<code>SYSCALL</code> 是软件主动触发的 Trap，正常使用时根本不是故障。Trap 既可能同步于某条指令，也可能异步发生。<strong>真正决定入口的是事件走中断优先级系统，还是 Trap Class 系统。</strong></p>
+<p>整体来说，不管是Trap还是interrupt，背后的本质都是触发后去根据相应的寄存器里存放的向量表的基址跳转，然后根据向量表定义好的地址再根据硬件机制判断当前触发的是哪种类型的中断&#x2F;异常？再根据向量表的定义跳转到指定地址，执行一些上下文保存操作之类的操作(汇编语言)。对于Tricore的架构而言，Trap和Interrupt是有两个单独的向量表分别维护的，示意图如下：</p>
+<p><img src="/../../../../data/Verisilicon_finals/Program/PDF%E8%BD%ACMD/%E5%9B%BE%E7%89%87/image-20260920191524697.png" alt="image-20260920191524697"></p>
+<p><code>BIV</code> 和 <code>BTV</code> 表内的入口是<strong>可执行代码</strong>，短短几条指令通常再跳往完整 Handler。这也解释了为何调试器停在 OS Handler 时，当前 <code>PC</code> 已经不在向量槽内。</p>
+<h2 id="2-例子1：CAN-中断为何有时进不了-ISR"><a href="#2-例子1：CAN-中断为何有时进不了-ISR" class="headerlink" title="2. 例子1：CAN 中断为何有时进不了 ISR"></a>2. 例子1：CAN 中断为何有时进不了 ISR</h2><p>假设 CAN 控制器已经提出服务请求，中断路由把待处理请求的优先级号送到目标 Core，记作 <code>PIPN</code>。CPU 并非一收到请求就立刻跳走，还要满足两个条件：全局中断使能位 <code>ICR.IE = 1</code>，并且 <code>PIPN</code> 高于当前 CPU 优先级 <code>ICR.CCPN</code>。否则请求可以保持待处理，等条件允许后再响应。</p>
+<p>响应时，CPU 保存被打断程序的 Upper Context，按 <code>BIV</code> 和 <code>PIPN</code> 找到 ISR 向量入口。向量槽位有 8 字节和 32 字节两种间距，取决于 <code>BIV.VSS</code> 的配置。所以入口地址可以理解为：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">中断入口 = BIV 基址 + PIPN × 向量槽位大小</span><br></pre></td></tr></table></figure>
+
+<p>硬件实际按对齐后的字段组合生成地址；上式用来理解优先级如何索引向量表。进入 ISR 后，当前优先级会更新，普通中断暂时关闭。ISR 可以按需要重新开放更高优先级中断；执行 <code>RFE</code> 时，进入前的优先级和中断使能状态由保存的上下文恢复。</p>
+<p>所以“CAN 已经收到了数据，却没进 ISR”并不等于向量表坏了。先看外设请求是否使能、路由到哪个 Core、配置了什么优先级，再看该 Core 的 <code>ICR.IE/CCPN</code>。这是 Interrupt 独有的一条排查链，Trap 不靠 <code>PIPN</code> 分发。</p>
+<h2 id="3-例子2：保护错误为何直接进-Trap"><a href="#3-例子2：保护错误为何直接进-Trap" class="headerlink" title="3. 例子2：保护错误为何直接进 Trap"></a>3. 例子2：保护错误为何直接进 Trap</h2><p>假设一条 <code>LD.W</code> 读取了当前任务无权读取的区域，触发内存读取保护 Trap。它属于 Class 1，具体原因是 MPR（TIN 2）。硬件按 <strong>TCN &#x3D; 1</strong> 找向量入口，再把 <strong>TIN &#x3D; 2</strong> 写入 <code>D15</code>。同样在 Class 1 下，写保护和执行保护错误有别的 TIN，却先进入同一个 Class 的向量槽位，由 Handler 继续区分。</p>
+<p>Trap 向量槽位固定为 32 字节；当 <code>BTV</code> 按要求配置时，可把入口理解为 <code>BTV + TCN × 32</code>。这里没有 <code>PIPN &gt; CCPN</code> 的判断，也不是先等 <code>ICR.IE</code> 打开。<strong>Trap 机制始终有效；响应后会暂时关闭普通中断，但不会把当前 <code>CCPN</code> 改成 Trap Class。</strong></p>
+<p><img src="/../images/trap-interrupt-flow.png" alt="TriCore Trap 入口和处理过程"></p>
+<p>因此只知道“进入了 Class 1 Handler”仍不够，必须看入口处的 <code>D15</code>。一路运行到普通 C 函数后，<code>D15</code> 可能已被后续代码使用；更稳妥的是在 Trap 入口读取，或看 OS 当时保存的 Trap 记录。</p>
+<p>保护错误属于同步 Trap，出错位置可以追到这条 <code>LD.W</code>。但 Trap 并不都能这样追：NMI 属于异步 Trap，发生时被打断的指令未必是原因；<code>SYSCALL</code> 则是软件有意执行的系统调用。<strong>Trap 与 Interrupt 的区别不是“同步还是异步”，也不是“错误还是正常事件”。</strong></p>
+<p>Tricore架构中的不同类别的Trap和定义分类如下：</p>
+<table>
+<thead>
+<tr>
+<th>Trap  Class</th>
+<th>当前配置</th>
+<th>硬件含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>UnhandledTrapEntry</td>
+<td>MMU  Trap</td>
+</tr>
+<tr>
+<td>1</td>
+<td>MemoryTrapEntry</td>
+<td>Internal  Protection Trap，内部保护&#x2F;内存访问保护异常</td>
+</tr>
+<tr>
+<td>2</td>
+<td>UnhandledTrapEntry</td>
+<td>Instruction  Trap，指令异常</td>
+</tr>
+<tr>
+<td>3</td>
+<td>UnhandledTrapEntry</td>
+<td>Context  Management Trap，上下文管理异常</td>
+</tr>
+<tr>
+<td>4</td>
+<td>UnhandledTrapEntry</td>
+<td>System  Bus Trap，系统总线异常</td>
+</tr>
+<tr>
+<td>5</td>
+<td>UnhandledTrapEntry</td>
+<td>Assertion  Trap，断言异常</td>
+</tr>
+<tr>
+<td>6</td>
+<td>SysCallTrapEntry</td>
+<td>System  Call Trap，系统调用异常</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Core0  为 UserTrapEntry，其他为 UnhandledTrapEntry</td>
+<td>NMI  Trap，非屏蔽中断&#x2F;SMU Trap</td>
+</tr>
+</tbody></table>
+<h2 id="4-Interrupt和Trap的区别"><a href="#4-Interrupt和Trap的区别" class="headerlink" title="4. Interrupt和Trap的区别"></a>4. Interrupt和Trap的区别</h2><table>
+<thead>
+<tr>
+<th>对比</th>
+<th>Interrupt</th>
+<th>Trap</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>核心用途</td>
+<td>对正常 Service Request 作出响应</td>
+<td>处理异常&#x2F;特殊执行条件</td>
+</tr>
+<tr>
+<td>常见来源</td>
+<td>CAN、Timer、ADC、DMA、外部事件等</td>
+<td>Protection、非法指令、Bus  Error、CSA错误、NMI、SYSCALL等</td>
+</tr>
+<tr>
+<td>入口基址</td>
+<td><strong>BIV</strong></td>
+<td><strong>BTV</strong></td>
+</tr>
+<tr>
+<td>入口选择依据</td>
+<td>Interrupt  Priority Number</td>
+<td><strong>TCN</strong></td>
+</tr>
+<tr>
+<td>具体事件识别</td>
+<td>Service  Request Source</td>
+<td><strong>TIN，硬件写入  D15</strong></td>
+</tr>
+<tr>
+<td>分类数量</td>
+<td>最多可有大量 Service Request &#x2F; Priority</td>
+<td><strong>固定 8 个 Trap Class</strong></td>
+</tr>
+<tr>
+<td>Vector  Entry</td>
+<td>TC1.6.2P  可配置 8 &#x2F; 32 Byte spacing</td>
+<td>每个 Class 固定 <strong>32  Byte</strong></td>
+</tr>
+<tr>
+<td>是否可全局 Disable</td>
+<td>可以，ICR.IE</td>
+<td>架构层 Trap 始终 active</td>
+</tr>
+<tr>
+<td>是否改变 CCPN</td>
+<td>Interrupt  会参与当前 CPU Priority 管理</td>
+<td><strong>Trap  不改变 ICR.CCPN</strong></td>
+</tr>
+<tr>
+<td>与当前指令关系</td>
+<td>通常与当前正在执行哪条指令无直接关系</td>
+<td>可以是同步，也可以异步</td>
+</tr>
+<tr>
+<td>A11</td>
+<td>下一条本来应该执行的位置</td>
+<td>同步 Trap 通常指向造成 Trap 的指令</td>
+</tr>
+<tr>
+<td>正常性</td>
+<td>系统正常运行机制</td>
+<td>很多表示错误，也包括 SYSCALL 等主动行为</td>
+</tr>
+<tr>
+<td>是否一定能返回</td>
+<td>通常应当正常返回</td>
+<td><strong>不一定，有些 Trap 不可恢复</strong></td>
+</tr>
+</tbody></table>
+<h2 id="4-停在-Handler，原来的现场在哪里"><a href="#4-停在-Handler，原来的现场在哪里" class="headerlink" title="4. 停在 Handler，原来的现场在哪里"></a>4. 停在 Handler，原来的现场在哪里</h2><p>TriCore 用 <strong>CSA（Context Save Area）</strong> 保存上下文。它把寄存器分为 Upper Context 和 Lower Context：进入 Trap 或 Interrupt 时，硬件从 <code>FCX</code> 管理的空闲链取得 CSA，自动保存 Upper Context；<code>PCXI</code> 串起已保存的上下文。Handler 若使用还未保存的 Lower Context，需要遵守相应的保存约定。</p>
+<p><img src="/../images/trap-context-compare.svg" alt="TriCore CSA 与 Cortex-M4 异常栈帧对照"></p>
+<p>Trap 或 Interrupt <strong>刚进入向量入口时</strong>，硬件还会改写 <code>A11</code> 作为返回位置。对一般<strong>同步 Trap</strong>，它指向触发 Trap 的指令；对 <code>SYSCALL</code>、异步 Trap 和 Interrupt，它指向原本接下来要执行的指令。FCD 等特殊 Trap 另有规则。若 Handler 后来执行了 <code>CALL</code>，当前 <code>A11</code> 又会变成函数返回地址；调试器停在深层 OS 函数时，应看入口保存的值或沿 CSA 链还原，不能把此时的 <code>A11</code> 直接当故障 PC。</p>
+<p><img src="/../images/trap-a11-instruction.png" alt="A11 指向触发同步 Trap 的指令示例"></p>
+<p>图中假设入口捕获的 <code>A11 = 0x80012004</code>，反汇编对应一条 <code>LD.W</code>。这只定位到<strong>发起访问的指令</strong>；被访问的地址还要结合指令操作数、相关寄存器和异常状态判断。若是总线访问类 Trap，还要查该类对应的错误地址与状态寄存器。只看 <code>A11</code>，仍说不出究竟访问了哪里。</p>
+<p>在 OS 工程里，实际跳转路径往往是“Class 向量入口 → 汇编入口 → OS HAL Handler → 保护错误处理”。调试器最终停在保护错误处理函数，只说明处理链走到了这里。向前追故障位置，应读 Trap Class、入口保存的 TIN 和返回位置，再结合 CSA 现场；遇到上下文耗尽之类的问题，还要检查 <code>FCX/PCXI</code> 链本身。</p>
+<h2 id="5-Cortex-M4-里还有-Trap-和-Interrupt-吗"><a href="#5-Cortex-M4-里还有-Trap-和-Interrupt-吗" class="headerlink" title="5. Cortex-M4 里还有 Trap 和 Interrupt 吗"></a>5. Cortex-M4 里还有 Trap 和 Interrupt 吗</h2><p><strong>Interrupt 有，Trap 没有作为与 Interrupt 并列的一套架构入口。</strong>Cortex-M4 用 <strong>Exception（异常）</strong>统称使处理器离开当前执行流的事件：外设 IRQ 是其中一类，HardFault、UsageFault、BusFault、MemManage Fault 是 Fault 类，另有 NMI、SVC、SysTick 等系统异常。这里的“Exception”是总称，并不等于“程序出错”。</p>
+<p>这些事件共用一张向量表。表内存的是 <strong>Handler 地址</strong>，并非 TriCore 那种可执行的向量槽代码。例如 <code>VTOR + 0x0C</code> 放 <code>HardFault_Handler</code> 的地址，<code>VTOR + 0x18</code> 放 <code>UsageFault_Handler</code> 的地址，<code>VTOR + 0x40</code> 开始是外部 IRQ 的 Handler 地址。IRQ 由 NVIC 记录待处理状态并参与优先级仲裁；Fault 按故障类型进入相应 Handler，但同样使用 Exception 的优先级、入栈和返回机制。外部 IRQ 的优先级可配置，HardFault 的优先级固定，高于可配置的 IRQ 和 Fault，低于 NMI 与 Reset。<code>PRIMASK/BASEPRI</code> 能阻止相应的可配置优先级异常，不能按普通 IRQ 的方式挡住 HardFault；<code>FAULTMASK</code> 是另一个会挡住 HardFault 的特殊屏蔽位。</p>
+<p>拿一条<strong>无法识别的指令</strong>作例子，可以看出 HardFault 究竟扮演什么角色：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">TriCore：非法操作码 → Class 2 / TIN 1 (IOPC) → BTV 的 Class 2 入口</span><br><span class="line"></span><br><span class="line">Cortex-M4：未定义指令 → UsageFault</span><br><span class="line">           └─ 若 UsageFault Handler 未使能 → 升级为 HardFault</span><br></pre></td></tr></table></figure>
+
+<p>在 Cortex-M4 的后一种情况里，调试器停在 <code>HardFault_Handler</code>，<strong>原始原因仍是未定义指令</strong>。<code>HFSR.FORCED = 1</code> 表示某个可配置 Fault 升级了，继续读 <code>CFSR</code> 中的 <code>UFSR.UNDEFINSTR</code> 才找到原因；这个例子中，异常栈帧里的 <code>PC</code> 指向那条未定义指令。若 UsageFault Handler 已使能且优先级允许，则会直接进 <code>UsageFault_Handler</code>，根本不经过 HardFault。HardFault 还可能由其他异常处理错误触发，不能把它当作所有“CPU 犯错”的统一名字。</p>
+<p>Cortex-M4 进入 Exception 时，在原程序所用的 MSP 或 PSP 上建立基本栈帧，保存 <code>R0–R3</code>、<code>R12</code>、原来的 <code>LR</code>、<code>PC</code> 和 <code>xPSR</code>；Handler 里的 <code>LR</code> 是用于异常返回的 <code>EXC_RETURN</code>，可据此判断该去哪个栈找现场。TriCore 则从空闲 CSA 链取单元，用 <code>PCXI</code> 连接保存的上下文。两边的 Handler 当前 <code>PC</code> 都只是处理代码的位置，不能拿来代替被打断程序的位置。</p>
+<table>
+<thead>
+<tr>
+<th>同一种事件</th>
+<th>TriCore 的归类</th>
+<th>Cortex-M4 的归类</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>外设提出服务请求</td>
+<td>Interrupt，走 <code>BIV</code></td>
+<td>外部 IRQ，属于 Exception</td>
+</tr>
+<tr>
+<td>执行未定义&#x2F;非法指令</td>
+<td>同步 Trap，走 <code>BTV</code></td>
+<td>UsageFault；不能处理时可升级为 HardFault</td>
+</tr>
+<tr>
+<td>NMI</td>
+<td>异步 Trap，走 <code>BTV</code></td>
+<td>NMI，属于系统 Exception</td>
+</tr>
+<tr>
+<td>主动请求系统服务</td>
+<td><code>SYSCALL</code> 触发 Trap</td>
+<td><code>SVC</code> 触发 SVCall Exception</td>
+</tr>
+</tbody></table>
+<p>因此 <strong>HardFault 不是 TriCore Trap 的一对一对应物</strong>。用“非法指令”对比时，TriCore 直接看 Class 和 TIN；Cortex-M4 先看实际进入哪个 Fault Handler，若是 HardFault 再查有没有升级以及原始 Fault 状态。这才是两套机制在调试现场最明显的区别。</p>
+<h2 id="6-调试时先认入口，再找原始现场"><a href="#6-调试时先认入口，再找原始现场" class="headerlink" title="6. 调试时先认入口，再找原始现场"></a>6. 调试时先认入口，再找原始现场</h2><p><strong>TriCore 停在 Trap Handler：</strong>先确认 Core 和 Class，查入口保存的 TIN。若是同步 Trap，从入口保存的 <code>A11</code> 回到触发指令，结合反汇编、寄存器和状态寄存器找实际访问目标；若是异步 Trap，<code>A11</code> 只是被打断时的返回位置，不能直接认定那条指令就是原因。</p>
+<p><strong>TriCore 外设中断没有进入 ISR：</strong>查看外设是否发出服务请求，再查请求使能、目标 Core 和优先级，最后对照 <code>BIV</code> 与 <code>ICR</code>。这里没有“读 <code>D15</code> 找 TIN”这一步。</p>
+<p><strong>Cortex-M4 停在 HardFault_Handler：</strong>先看 <code>HFSR</code>；若 <code>FORCED</code> 置位，继续看 <code>CFSR</code> 里是哪类 Fault 的状态位。再依据 <code>EXC_RETURN</code> 选择 MSP&#x2F;PSP，检查异常栈帧里的 <code>PC</code>。例如 <code>UFSR.UNDEFINSTR</code> 指向未定义指令，而非“HardFault 自己产生了一条错误指令”。栈帧损坏或非精确总线错误等情况，还得结合相应状态位解释，不能无条件相信堆栈 <code>PC</code> 就是肇事指令。</p>
+<p>TriCore 的 Trap 和 Interrupt 最终都可能用 <code>RFE</code> 返回，但返回动作不会修复故障。同步 Trap 的触发条件如果仍在，返回后可能立刻在同一条指令再次进入 Trap；在 Cortex-M4 上，故障指令未被修正也可能反复进入 Fault Handler。先弄清入口、原因和返回位置，再考虑能否继续执行。</p>
+
+    </div>
+</article>
+
+            
+                <div class="card interaction-section" style="padding: 20px;">
+                    <div class="giscus"></div>
+                </div>
+            
+        </div>
+
+        
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 ZHUHENGHAO</p>
+    </footer>
+
+    <div id="email-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('email-modal')">&times;</span>
+            <h3><i class="fas fa-paper-plane" style="color: #49b1f5;"></i> 邮箱联系</h3>
+            <p>如有疑问或需要交流的地方<br>可以邮箱与我联系：<br><strong style="color: #49b1f5; font-size: 1.2rem;">3185223091@qq.com</strong></p>
+        </div>
+    </div>
+
+    <div id="donate-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('donate-modal')">&times;</span>
+            <h3><i class="fas fa-coffee" style="color: #ff7242;"></i> 感谢支持</h3>
+            <p><strong>创作不易，如博客或项目对您有帮助欢迎打赏！</strong></p>
+            <img src="/images/wechat_pay.jpg" alt="微信收款码" style="width: 220px; height: 220px; border-radius: 12px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border-color);">
+        </div>
+    </div>
+
+    <script>
+        function syncThemeState() {
+            var isDark = localStorage.getItem('theme') === 'dark';
+            var body = document.body;
+            var toggleBtn = document.getElementById('theme-toggle');
+            
+            // 决定要传给 Giscus 的主题名字
+            var giscusTheme = isDark ? 'dark' : 'light';
+            
+            if (isDark) {
+                body.classList.add('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '☀️';
+            } else {
+                body.classList.remove('dark-mode');
+                if (toggleBtn) toggleBtn.innerHTML = '🌙';
+            }
+
+            // ✅ 核心魔法：向 Giscus 发送切换主题的消息，让评论框跟着变色！
+            var iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig: { theme: giscusTheme } } },
+                    'https://giscus.app'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark-mode')) {
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                    syncThemeState();
+                });
+            }
+        });
+
+        window.addEventListener('pageshow', function() {
+            syncThemeState();
+        });
+    </script>
+
+    <script src="https://giscus.app/client.js"
+            data-repo="ZHUHENGHAO/zhuhenghao.github.io"
+            data-repo-id="R_kgDORnxhDg"
+            data-category="Announcements"
+            data-category-id="DIC_kwDORnxhDs4C4myp"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light" 
+            data-lang="zh-CN"
+            crossorigin="anonymous"
+            async>
+    </script>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

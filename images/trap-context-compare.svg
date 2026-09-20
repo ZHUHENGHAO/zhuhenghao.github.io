@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="460" viewBox="0 0 1120 460" role="img" aria-labelledby="title desc">
+  <title id="title">TriCore 与 Cortex-M4 的异常现场保存</title>
+  <desc id="desc">TriCore 从 FCX 获取 CSA 并保存 Upper Context，Cortex-M4 在当前栈中建立基本异常栈帧。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M1 1L7 4.5L1 8" fill="none" stroke="#475569" stroke-width="1.6"/>
+    </marker>
+  </defs>
+  <rect width="1120" height="460" fill="#fff"/>
+  <text x="280" y="44" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="27" font-weight="700" fill="#182333">TriCore</text>
+  <text x="840" y="44" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="27" font-weight="700" fill="#182333">Cortex-M4</text>
+  <line x1="560" y1="60" x2="560" y2="438" stroke="#d1d5db" stroke-width="2"/>
+
+  <rect x="70" y="79" width="420" height="57" rx="6" fill="#e8f1fb" stroke="#7ba5d3" stroke-width="1.5"/>
+  <text x="280" y="115" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#182333">Trap / Interrupt 进入</text>
+  <line x1="280" y1="137" x2="280" y2="163" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="70" y="169" width="420" height="57" rx="6" fill="#fff" stroke="#7ba5d3" stroke-width="1.5"/>
+  <text x="280" y="205" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#182333">从 FCX 链取得空闲 CSA</text>
+  <line x1="280" y1="227" x2="280" y2="253" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="70" y="259" width="420" height="85" rx="6" fill="#fff" stroke="#7ba5d3" stroke-width="1.5"/>
+  <text x="280" y="294" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#182333">硬件保存 Upper Context</text>
+  <text x="280" y="322" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#526174">PCXI 串起已保存的上下文</text>
+  <line x1="280" y1="345" x2="280" y2="371" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="280" y="406" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#182333">Handler 读取 A11；Trap 的 TIN 在 D15</text>
+
+  <rect x="630" y="79" width="420" height="57" rx="6" fill="#e9f5ef" stroke="#72aa88" stroke-width="1.5"/>
+  <text x="840" y="115" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#182333">Exception 进入</text>
+  <line x1="840" y1="137" x2="840" y2="163" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="630" y="169" width="420" height="57" rx="6" fill="#fff" stroke="#72aa88" stroke-width="1.5"/>
+  <text x="840" y="205" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#182333">在当前 MSP / PSP 建立栈帧</text>
+  <line x1="840" y1="227" x2="840" y2="253" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="630" y="259" width="420" height="85" rx="6" fill="#fff" stroke="#72aa88" stroke-width="1.5"/>
+  <text x="840" y="294" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#182333">硬件保存基本异常栈帧</text>
+  <text x="840" y="322" text-anchor="middle" font-family="Consolas, monospace" font-size="18" fill="#526174">R0–R3, R12, LR, PC, xPSR</text>
+  <line x1="840" y1="345" x2="840" y2="371" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="840" y="406" text-anchor="middle" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#182333">Handler 的 LR 保存 EXC_RETURN</text>
+</svg>
