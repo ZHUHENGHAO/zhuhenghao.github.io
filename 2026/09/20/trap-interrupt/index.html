@@ -74,7 +74,7 @@
     <div class="post-body">
         <h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><p>最近一直在准备秋招的事项，也马上就得回学校干那个<strong>SHABI</strong>课题了，很久没有更新博客了。。。最近花了点时间梳理了一下Trap和Interrupt的概念，这个是在实习的时候从英飞凌芯片中接触了解到的。</p>
 <p>首先在英飞凌的Tricore架构中，Trap 是 TriCore CPU 架构提供的一种异常事件处理机制。当 CPU 或系统检测到特定异常条件，或者软件主动触发特定 Trap 时，CPU 会中断当前正常执行流，保存必要的执行上下文，并通过 Trap Vector Table 转移到对应的 Trap Handler 进行处理，这一点触发的底层逻辑和我们经常会用到的中断，也就是interrupt很像，但是核心的含义却不一样，简单来说<strong>中断更像是请求响应机制</strong>、<strong>Trap</strong>则是<strong>异常控制流机制</strong>。后面会详细说明。Trap 不等于“程序报错”，更准确地说是一套<span style="color:#CC0000;"><strong>特殊事件&#x2F;异常的控制流转移机制</strong></span>。芯片手册中对于Trap的定义如下：</p>
-<p><img src="/../../../../data/Verisilicon_finals/Program/PDF%E8%BD%ACMD/%E5%9B%BE%E7%89%87/image-20260920185831612.png" alt="image-20260920185831612"></p>
+<p><img src="/../images/image-20260920194835016.png" alt="image-20260920194835016"></p>
 <p>查 TC3xx 的 OS 异常处理代码时，启动文件分别初始化 <code>BIV</code> 和 <code>BTV</code>这两个寄存器。外设中断从 <code>BIV</code> 进入，访问保护错误却从 <code>BTV</code> 进入。同样是“当前程序被打断”，为什么要准备两张表？如果调试器已经停在 OS 的 Handler，原来出问题的指令又在哪里？</p>
 <p>关键是 TriCore 把 <strong>Interrupt 服务请求</strong>和 <strong>Trap 事件</strong>交给两套不同的分发机制。Cortex-M4 则把外部 IRQ、HardFault 等纳入同一套 Exception 机制。名字相似，分类方法并不一样。</p>
 <h2 id="1-Trap-和-Interrupt-究竟按什么区分"><a href="#1-Trap-和-Interrupt-究竟按什么区分" class="headerlink" title="1. Trap 和 Interrupt 究竟按什么区分"></a>1. Trap 和 Interrupt 究竟按什么区分</h2><p><img src="/../images/trap-interrupt-paths.png" alt="TriCore 的两条异常入口路径"></p>
